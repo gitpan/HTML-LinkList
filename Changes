@@ -1,0 +1,15 @@
+Revision history for HTML-LinkList
+==================================
+
+0.01 Mon 09 January 2006
+------------------------
+
+  * (9 Jan 2006) tweaking documentation
+
+  * (9 Jan 2006) commit tweaking
+  	The ModDevAid stuff needed to not try to chmod non-existant scripts.
+
+  * (9 Jan 2006) fixing tests
+  	Just some minor bugs with the tests.
+
+  * (9 Jan 2006) initial checkin
