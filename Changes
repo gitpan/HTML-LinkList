@@ -1,6 +1,37 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.04 Fri 13 January 2006
+------------------------
+
+  * (13 Jan 2006) improved nav_tree
+  	Revamped the logic and the options to make nav_tree more sensible
+  and simpler to use.
+
+  * (12 Jan 2006) nomenclature
+  	Stop referring to directories; they're index pages.
+  	Renamed 'dir_tree' to 'full_tree'.
+
+0.03 Thu 12 January 2006
+------------------------
+
+  * (12 Jan 2006) renames,additions,nav_tree
+  	- renamed breadcrumb_tree to breadcrumb_trail
+  	- added the 'preserve_order' option to dir_tree
+  	- added new function 'nav_tree' to make a nested navbar
+  	- updated documentation
+  	- fixes and tweaks
+
+0.02 Wed 11 January 2006
+------------------------
+
+  * (11 Jan 2006) breadcrumb_tree
+  	Added the 'breadcrumb_tree' function which makes a breadcrumb
+  trail from the current_url.
+
+  * (11 Jan 2006) minor fixes
+  	Made the checking of the 'current_url' better.
+
 0.01 Mon 09 January 2006
 ------------------------
 

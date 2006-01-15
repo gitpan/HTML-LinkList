@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.01> of HTML::LinkList.
+This describes version B<0.04> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.04';
 
 =head1 SYNOPSIS
 
@@ -39,28 +39,41 @@ our $VERSION = '0.01';
 
 =head1 DESCRIPTION
 
-This module contains a number of functions for taking sets of
-URLs and labels and creating suitably formatted HTML.
-These links are "smart" because, if given the url of
-the current page, if any of the links in the list equal it,
-that item in the list will be formatted as a special label,
-not as a link; this is a Good Thing, since the user would
-be confused by clicking on a link back to the current page.
+This module contains a number of functions for taking sets of URLs and
+labels and creating suitably formatted HTML.  These links are "smart"
+because, if given the url of the current page, if any of the links in
+the list equal it, that item in the list will be formatted as a special
+label, not as a link; this is a Good Thing, since the user would be
+confused by clicking on a link back to the current page.
 
-While the default format for the HTML is to make an unordered list,
-there are many options, enabling one to have a flatter layout
-with any separators you desire.
+While many website systems have plugins for "smart" navbars, they are
+specialized for that system only, and can't be reused elsewhere, forcing
+people to reinvent the wheel. I hereby present one wheel, free to be
+reused by anybody; just the simple functions, a backend, which can be
+plugged into whatever system you want.
 
-The "link_list" function uses a simple list of links -- good
-for a simple navbar.
+The default format for the HTML is to make an unordered list, but there
+are many options, enabling one to have a flatter layout with any
+separators you desire.
 
-The "link_tree" function takes a set of nested links
-and makes the HTML for them -- good for making a table of contents,
-or a more complicated navbar.
+The "link_list" function uses a simple list of links -- good for a
+simple navbar.
 
-The "dir_tree" function takes a list of paths and makes
-a full tree of all the files and directories in those
-paths -- good for making a site map.
+The "link_tree" function takes a set of nested links and makes the HTML
+for them -- good for making a table of contents, or a more complicated
+navbar.
+
+The "full_tree" function takes a list of paths and makes a full tree of
+all the pages and index-pages in those paths -- good for making a site
+map.
+
+The "breadcrumb_trail" function takes a url and makes a "breadcrumb trail"
+from it.
+
+The "nav_tree" function creates a set of nested links to be
+used as a multi-level navbar; one can give it a list of paths
+(as for full_tree) and it will only show the links related
+to the current URL.
 
 =cut
 
@@ -89,7 +102,9 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw(
 	link_list
 	link_tree
-	dir_tree
+	full_tree
+	breadcrumb_trail
+	nav_tree
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -211,6 +226,8 @@ sub link_list {
     {
 	return '';
     }
+    # correct the current_url
+    $args{current_url} = make_canonical($args{current_url});
     my @items = ();
     foreach my $link (@link_order)
     {
@@ -358,6 +375,9 @@ sub link_tree {
 		@_
 	       );
 
+    # correct the current_url
+    $args{current_url} = make_canonical($args{current_url});
+
     $args{tree_depth} = 0;
     $args{end_depth} = 0;
 
@@ -374,24 +394,22 @@ sub link_tree {
     }
 } # link_tree
 
-=head2 dir_tree
+=head2 full_tree
 
-    $links = dir_tree(
+    $links = full_tree(
 	paths=>\@list_of_paths,
 	labels=>\%labels,
 	descriptions=>\%desc,
 	hide=>$hide_regex,
 	start_depth=>0,
 	end_depth=>0,
+	preserve_order=>0,
 	...
 	);
 
 Given a set of paths this will generate a tree of links in the style of
-I<link_tree>.  The lists will be nested just like the directories are,
-and sorted in alphabetical order.
-
-If you don't want them sorted in alphabetical order, then you would
-do better to generate your own list of paths, and use I<link_tree>.
+I<link_tree>.   This will figure out all the intermediate paths and construct
+the nested structure for you, clustering parents and children together.
 
 The formatting options are as for L</link_tree>.
 
@@ -401,30 +419,50 @@ Options:
 
 =item paths
 
-A reference to a list of paths; for example, files relative to the top
-of the website.  Note that they need to be URL relative paths (with the
-'/' character as directory separator) not MS-Windows-style filenames.
+A reference to a list of paths: that is, URLs relative to the top
+of the site.
+
+For example, if the full URL is http://www.example.com/foo.html
+then the path is /foo.html
+
+If the full URL is http://www.example.com/~frednurk/foo.html
+then the path is /foo.html
+
 This does not require that every possible path be given; all the intermediate
 paths will be figured out from the list.
 
 =item labels
 
-Hash containing replacement labels for one or more categories.
+Hash containing replacement labels for one or more paths.
 If no label is given for '/' (the root path) then 'Home' will
 be used.
 
 =item descriptions
 
 Optional hash of descriptions, to put next to the links.  The keys
-of this hash are the urls.
+of this hash are the paths.
+
+=item prefix_url
+
+A prefix to prepend to all the links. (default: empty string)
 
 =item hide
 
 If the path matches this string, don't include it in the tree.
 
+=item preserve_order
+
+Preserve the ordering of the paths in the input list of paths;
+otherwise the links will be sorted alphabetically.  Note that if
+preserve_order is true, the structure is at the whims of the order
+of the original list of paths, and so could end up odd-looking.
+(default: false)
+
 =item start_depth
 
-Start your tree at this depth.
+Start your tree at this depth.  Zero is the root, level 1 is the
+files/sub-folders in the root, and so on.
+(default: 0)
 
 =item end_depth
 
@@ -443,9 +481,10 @@ Only used if end_depth is not zero.
 =back
 
 =cut
-sub dir_tree {
+sub full_tree {
     my %args = (
 		paths=>undef,
+		current_url=>'',
 		tree_head=>'<ul>',
 		tree_foot=>"\n</ul>",
 		subtree_head=>'<ul>',
@@ -459,18 +498,23 @@ sub dir_tree {
 		item_sep=>"\n",
 		tree_sep=>"\n",
 		hide=>'',
+		preserve_order=>0,
 		labels=>{},
 		start_depth=>0,
 		end_depth=>0,
 		@_
 	       );
 
+    # correct the current_url
+    $args{current_url} = make_canonical($args{current_url});
+
     # set the root label
     if (!$args{labels}->{'/'})
     {
 	$args{labels}->{'/'} = 'Home';
     }
-    my @path_list = extract_all_paths(paths=>$args{paths});
+    my @path_list = extract_all_paths(paths=>$args{paths},
+	preserve_order=>$args{preserve_order});
     my @list_of_lists = build_lol(%args, paths=>\@path_list,
 				  depth=>0);
     $args{tree_depth} = 0;
@@ -478,7 +522,221 @@ sub dir_tree {
 
     my $list = traverse_lol(\@list_of_lists, %args);
     return join('', $args{tree_head}, $list, $args{tree_foot});
-} # dir_tree
+} # full_tree
+
+=head2 breadcrumb_trail
+
+    $links = breadcrumb_trail(
+		current_url=>$url,
+		labels=>\%labels,
+		descriptions=>\%desc,
+		tree_head=>'<p>',
+		tree_foot=>"\n</p>",
+		subtree_head=>'',
+		subtree_foot=>"\n",
+		pre_item=>'',
+		post_item=>'',
+		pre_active_item=>'<em>',
+		post_active_item=>'</em>',
+		item_sep=>"\n",
+		tree_sep=>' &gt; ',
+	...
+	);
+
+Given the current url, make a breadcrumb trail from it.
+By default, this is laid out with '>' separators, but it can
+be set up to give a nested set of UL lists (as for L</full_tree>).
+
+The formatting options are as for L</link_tree>.
+
+Options:
+
+=over
+
+=item current_url
+
+The current url to be made into a breadcrumb-trail.
+
+=item labels
+
+Hash containing replacement labels for one or more URLS.
+If no label is given for '/' (the root path) then 'Home' will
+be used.
+
+=item descriptions
+
+Optional hash of descriptions, to put next to the links.  The keys
+of this hash are the urls.
+
+=back
+
+=cut
+sub breadcrumb_trail {
+    my %args = (
+		current_url=>'',
+		tree_head=>'<p>',
+		tree_foot=>"\n</p>",
+		subtree_head=>'',
+		subtree_foot=>'',
+		last_subtree_head=>'{',
+		last_subtree_foot=>'}',
+		pre_item=>'',
+		post_item=>'',
+		pre_active_item=>'<em>',
+		post_active_item=>'</em>',
+		item_sep=>"\n",
+		tree_sep=>' &gt; ',
+		hide=>'',
+		labels=>{},
+		paths=>[],
+		preserve_order=>0,
+		start_depth=>0,
+		end_depth=>undef,
+		@_
+	       );
+
+    # correct the current_url
+    $args{current_url} = make_canonical($args{current_url});
+
+    # set the root label
+    if (!$args{labels}->{'/'})
+    {
+	$args{labels}->{'/'} = 'Home';
+    }
+
+    # make a list of paths consisting only of the current_url
+    my @paths = ($args{current_url});
+    my @path_list = extract_all_paths(paths=>\@paths,
+	preserve_order=>$args{preserve_order});
+    my @list_of_lists = build_lol(%args, paths=>\@path_list,
+				  depth=>0);
+    $args{tree_depth} = 0;
+    $args{end_depth} = 0;
+
+    my $list = traverse_lol(\@list_of_lists, %args);
+    return join('', $args{tree_head}, $list, $args{tree_foot});
+} # breadcrumb_trail
+
+=head2 nav_tree
+
+    $links = nav_tree(
+	paths=>\@list_of_paths,
+	labels=>\%labels,
+	current_url=>$url,
+	hide=>$hide_regex,
+	preserve_order=>1,
+	descriptions=>\%desc,
+	...
+	);
+
+This takes a list of links, and the current URL, and makes a nested navigation
+tree, consisting of (a) the top-level links (b) the links leading to the
+current URL (c) the links on the same level as the current URL.
+
+Optionally, one can also include the links below the current_url level,
+and one can hide links which match match the 'hide' option.
+
+The formatting options are as for L</link_tree>.
+
+Options:
+
+=over
+
+=item paths
+
+A reference to a list of paths: that is, URLs relative to the top
+of the site.
+
+For example, if the full URL is http://www.example.com/foo.html
+then the path is /foo.html
+
+This does not require that every possible path be given; all the intermediate
+paths will be figured out from the list.
+
+=item labels
+
+Hash containing replacement labels for one or more paths.
+If no label is given for '/' (the root path) then 'Home' will
+be used.
+
+=item descriptions
+
+Optional hash of descriptions, to put next to the links.  The keys
+of this hash are the paths.
+
+=item hide
+
+If a path matches this string, don't include it in the tree.
+
+=item preserve_order
+
+Preserve the ordering of the paths in the input list of paths;
+otherwise the links will be sorted alphabetically.
+(default: true)
+
+=item last_subtree_head
+
+The string to prepend to the last lower-level tree.
+Only used if end_depth is not zero.
+
+=item last_subtree_foot
+
+The string to append to the last lower-level tree.
+Only used if end_depth is not zero.
+
+=back
+
+=cut
+sub nav_tree {
+    my %args = (
+		paths=>undef,
+		current_url=>'',
+		tree_head=>'<ul>',
+		tree_foot=>"\n</ul>",
+		subtree_head=>'<ul>',
+		subtree_foot=>"\n</ul>",
+		last_subtree_head=>'<ul>',
+		last_subtree_foot=>"\n</ul>",
+		pre_item=>'<li>',
+		post_item=>'</li>',
+		pre_active_item=>'<em>',
+		post_active_item=>'</em>',
+		item_sep=>"\n",
+		tree_sep=>"\n",
+		hide=>'',
+		preserve_order=>1,
+		labels=>{},
+		start_depth=>1,
+		end_depth=>undef,
+		@_
+	       );
+
+    # correct the current_url
+    $args{current_url} = make_canonical($args{current_url});
+    my $current_is_index = ($args{current_url} =~ m#/$#);
+
+    # set the end depth
+    # if this is an index-page, then make the depth its depth + 1
+    # if this is a content-page, make the depth its depth
+    my $current_url_depth = path_depth($args{current_url});
+    $args{end_depth} = ($current_is_index
+	? $current_url_depth + 1 : $current_url_depth);
+
+    # set the root label
+    if (!$args{labels}->{'/'})
+    {
+	$args{labels}->{'/'} = 'Home';
+    }
+    my @path_list = extract_all_paths(paths=>$args{paths},
+	preserve_order=>$args{preserve_order});
+    my @list_of_lists = build_lol(%args, paths=>\@path_list,
+				  do_navbar=>1,
+				  depth=>0);
+    $args{tree_depth} = 0;
+
+    my $list = traverse_lol(\@list_of_lists, %args);
+    return join('', $args{tree_head}, $list, $args{tree_foot});
+} # nav_tree
 
 =head1 Private Functions
 
@@ -582,7 +840,8 @@ sub make_item {
     {
 	$desc = ' ' . $args{descriptions}->{$link};
     }
-    if ($link eq $args{current_url}) # active
+    if (link_is_active(this_link=>$link,
+	current_url=>$args{current_url}))
     {
 	$item = join('', $args{pre_item},
 		     $args{pre_active_item},
@@ -603,6 +862,102 @@ sub make_item {
     }
     return $item;
 } # make_item
+
+=head2 make_canonical
+
+my $new_url = make_canonical($url);
+
+Make a URL canonical; remove the 'index.*' and add on a needed
+'/' -- this assumes that directory names never have a '.' in them.
+
+=cut
+sub make_canonical {
+    my $url = shift;
+
+    return $url if (!$url);
+    if ($url =~ m#^(/)index\.\w+$#)
+    {
+	$url = $1;
+    }
+    elsif ($url =~ m#^(.*/)index\.\w+$#)
+    {
+	$url = $1;
+    }
+    elsif ($url =~ m#/\w+$#) # no dots; a directory
+    {
+	$url .= '/'; # add the slash
+    }
+    return $url;
+} # make_canonical
+ 
+=head2 get_index_path
+
+my $new_url = get_index_path($url);
+
+Get the "index" part of this path.  That is, if this path
+is not for an index-page, then get the parent index-page
+path for this path.
+(Removes the trailing slash).
+
+=cut
+sub get_index_path {
+    my $url = shift;
+
+    return $url if (!$url);
+    $url = make_canonical($url);
+    if ($url =~ m#^(.*)/\w+\.\w+$#)
+    {
+	$url = $1;
+    }
+    elsif ($url ne '/')
+    {
+	$url =~ s#/$##;
+    }
+    return $url;
+} # get_index_path
+ 
+=head2 path_depth
+
+my $depth = path_depth($url);
+
+Calculate the "depth" of the given path.
+
+=cut
+sub path_depth {
+    my $url = shift;
+
+    return 0 if ($url eq '/'); # root is zero
+    $url =~ s#/$##; # remove trailing /
+    $url =~ s#^/##; # remove leading /
+    my @url = split('/', $url);
+    return scalar @url;
+} # path_depth
+ 
+=head2 link_is_active
+
+    if (link_is_active(this_link=>$link, current_url=>$url))
+    ...
+
+Check if the given link is "active", that is, if it
+matches the 'current_url'.
+
+=cut
+sub link_is_active {
+    my %args = (
+		this_link=>'',
+		current_url=>'',
+		@_
+	       );
+    my $link = make_canonical($args{this_link});
+    my $current_url = $args{current_url};
+
+    # if there is no current link, is not active.
+    return 0 if (!$current_url);
+
+    return 1 if ($link eq $current_url);
+    return 0;
+
+} # link_is_active
 
 =head2 traverse_lol
 
@@ -681,7 +1036,8 @@ sub traverse_lol {
 
 =head2 extract_all_paths
 
-my @all_paths = extract_all_paths(paths=>\@paths);
+my @all_paths = extract_all_paths(paths=>\@paths,
+    preserve_order=>0);
 
 Extract all possible paths out of a list of paths.
 Thus, if one has
@@ -695,31 +1051,42 @@ then that would make
 /foo/bar/
 /foo/bar/baz.html
 
-This returns a sorted list of all possible paths.
+If 'preserve_order' is true, this preserves the ordering of
+the paths in the input list; otherwise the output paths
+are sorted alphabetically.
 
 =cut
 sub extract_all_paths {
     my %args = (
 	paths=>undef,
+	preserve_order=>0,
 	@_
     );
     
     my %paths = ();
+    # keep track of the order of the paths in the list of paths
+    my $order = 1;
     foreach my $path (@{$args{paths}})
     {
 	my @path_split = split('/', $path);
 	# first path as-is
-	$paths{$path} = 1;
+	$paths{$path} = $order;
 	pop @path_split;
 	while (@path_split)
 	{
-	    # these paths are directories. should end in '/'
+	    # these paths are index-pages. should end in '/'
 	    my $newpath = join('/', @path_split, '');
-	    $paths{$newpath} = 1;
+	    # give this path the same order-num as the full path
+	    # but only if it hasn't already been added
+	    $paths{$newpath} = $order if (!exists $paths{$newpath});
 	    pop @path_split;
 	}
+	$order++ if ($args{preserve_order});
     }
-    return sort keys %paths;
+    return sort {
+	return $a cmp $b if ($paths{$a} == $paths{$b});
+	return $paths{$a} <=> $paths{$b};
+    } keys %paths;
 } # extract_all_paths
 
 =head2 build_lol
@@ -727,11 +1094,10 @@ sub extract_all_paths {
     my @lol = build_lol(
 	paths=>\@paths,
 	current_url=>$url,
-	match_current_url=>0,
+	do_navbar=>0,
     );
 
-Build a list of lists of directory/file paths, given
-a simple list of paths.
+Build a list of lists of paths, given a simple list of paths.
 
 =over
 
@@ -749,46 +1115,26 @@ sub build_lol {
 	start_depth=>0,
 	end_depth=>0,
 	current_url=>'',
-	match_current_url=>0,
+	do_navbar=>0,
 	hide=>undef,
 	@_
     );
     my $paths_ref = $args{paths};
     my $depth = $args{depth};
     my $hide = $args{hide};
-    my $current_url = $args{current_url};
-    my @current_url = split('/', $current_url);
-    my $current_url_depth = scalar @current_url;
+    my $current_url_depth = path_depth($args{current_url});
     # the current-url dir is the current url without the filename
-    my $current_url_dir = $current_url;
-    $current_url_dir =~ s/\/\w+\.\w+$//;
-    $current_url_dir =~ s/\/$//;
+    my $current_index_path = get_index_path($args{current_url});
+    my $current_index_path_depth = path_depth($current_index_path);
 
     my @list_of_lists = ();
     while (@{$paths_ref})
     {
 	my $path = $paths_ref->[0];
-	my @path = split('/', $path);
-	my $path_depth = scalar @path;
-	if ($args{match_current_url}
-	    and $args{current_url}
-	    and !(
-	     ($path_depth <= $current_url_depth
-	      and $args{current_url} =~ /^$path/)
-	     or (
-		 $path_depth == $current_url_depth
-		 and $path eq $current_url_dir
-		)
-	     or (
-		 $path_depth > $current_url_depth # child
-		 and $path =~ /^$current_url_dir/
-		)
-	    )
-	   )
-	{
-	    shift @{$paths_ref} # skip this one
-	}
-	elsif ($hide and $path =~ /$hide/)
+	my $can_path = make_canonical($path);
+	my $path_depth = path_depth($can_path);
+	my $path_is_index = ($can_path =~ m#/$#);
+	if ($hide and $path =~ /$hide/)
 	{
 	    shift @{$paths_ref} # skip this one
 	}
@@ -801,9 +1147,32 @@ sub build_lol {
 	{
 	    shift @{$paths_ref} # skip this one
 	}
+	# a navbar shows the parent, the children
+	# and the current level
+	# and the top level
+	elsif ($args{do_navbar}
+	    and $args{current_url}
+	    and !(
+	     ($path_depth <= $current_url_depth
+	      and $args{current_url} =~ /^$path/)
+	     or (
+		 $path eq $args{current_url}
+		)
+	     or (
+		 $path_depth >= $current_url_depth 
+		 and $path =~ /^$current_index_path/
+		)
+	     or (
+		 $path_depth == $args{start_depth}
+		)
+	    )
+	   )
+	{
+	    shift @{$paths_ref} # skip this one
+	}
 	elsif ($path_depth == $depth)
 	{
-	    shift @{$paths_ref}; # remove this path
+	    shift @{$paths_ref}; # use this path
 	    push @list_of_lists, $path;
 	}
 	elsif ($path_depth > $depth)
@@ -813,7 +1182,7 @@ sub build_lol {
 		depth=>$path_depth,
 		start_depth=>$args{start_depth},
 		end_depth=>$args{end_depth},
-		match_current_url=>$args{match_current_url},
+		do_navbar=>$args{do_navbar},
 		current_url=>$args{current_url},
 		)];
 	}
@@ -876,7 +1245,7 @@ Please report any bugs or feature requests to the author.
 
     Kathryn Andersen (RUBYKAT)
     perlkat AT katspace dot com
-    http://www.katspace.com
+    http://www.katspace.com/tools/html_linklist/
 
 =head1 COPYRIGHT AND LICENCE
 

@@ -6,7 +6,7 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 ==== VERSION ====
 
-This describes version ``0.01'' of HTML::LinkList.
+This describes version ``0.04'' of HTML::LinkList.
 
 
 ==== DESCRIPTION ====
@@ -18,9 +18,15 @@ list equal it, that item in the list will be formatted as a special label,
 not as a link; this is a Good Thing, since the user would be confused by
 clicking on a link back to the current page.
 
-While the default format for the HTML is to make an unordered list, there
-are many options, enabling one to have a flatter layout with any separators
-you desire.
+While many website systems have plugins for "smart" navbars, they are
+specialized for that system only, and can't be reused elsewhere, forcing
+people to reinvent the wheel. I hereby present one wheel, free to be reused
+by anybody; just the simple functions, a backend, which can be plugged into
+whatever system you want.
+
+The default format for the HTML is to make an unordered list, but there are
+many options, enabling one to have a flatter layout with any separators you
+desire.
 
 The "link_list" function uses a simple list of links -- good for a simple
 navbar.
@@ -28,8 +34,15 @@ navbar.
 The "link_tree" function takes a set of nested links and makes the HTML for
 them -- good for making a table of contents, or a more complicated navbar.
 
-The "dir_tree" function takes a list of paths and makes a full tree of all
-the files and directories in those paths -- good for making a site map.
+The "full_tree" function takes a list of paths and makes a full tree of all
+the pages and index-pages in those paths -- good for making a site map.
+
+The "breadcrumb_trail" function takes a url and makes a "breadcrumb trail"
+from it.
+
+The "nav_tree" function creates a set of nested links to be used as a
+multi-level navbar; one can give it a list of paths (as for full_tree) and
+it will only show the links related to the current URL.
 
 
 ==== REQUIRES ====
@@ -76,7 +89,7 @@ Therefore you will need to change the PERL5LIB variable to add
 
     Kathryn Andersen (RUBYKAT)
     perlkat AT katspace dot com
-    http://www.katspace.com
+    http://www.katspace.com/tools/html_linklist/
 
 
 ==== COPYRIGHT AND LICENCE ====
