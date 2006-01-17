@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.04> of HTML::LinkList.
+This describes version B<0.0502> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.0502';
 
 =head1 SYNOPSIS
 
@@ -915,6 +915,26 @@ sub get_index_path {
     }
     return $url;
 } # get_index_path
+
+=head2 get_index_parent
+
+my $new_url = get_index_parent($url);
+
+Get the parent of the "index" part of this path.
+(Removes the trailing slash).
+
+=cut
+sub get_index_parent {
+    my $url = shift;
+
+    return $url if (!$url);
+    $url = get_index_path($url);
+    if ($url =~ m#^(.*)/\w+$#)
+    {
+	$url = $1;
+    }
+    return $url;
+} # get_index_parent
  
 =head2 path_depth
 
@@ -1123,9 +1143,58 @@ sub build_lol {
     my $depth = $args{depth};
     my $hide = $args{hide};
     my $current_url_depth = path_depth($args{current_url});
+    my $current_url_is_index = ($args{current_url} =~ m#/$#);
     # the current-url dir is the current url without the filename
     my $current_index_path = get_index_path($args{current_url});
     my $current_index_path_depth = path_depth($current_index_path);
+    my $current_index_parent = get_index_parent($args{current_url});
+
+    my @list_of_lists = build_lol_recurse(
+	%args,
+	current_url_depth=>$current_url_depth,
+	current_url_is_index=>$current_url_is_index,
+	current_index_path=>$current_index_path,
+	current_index_path_depth=>$current_index_path_depth,
+	current_index_parent=>$current_index_parent,
+    );
+
+    return @list_of_lists;
+} # build_lol
+
+=head2 build_lol_recurse
+
+    my @lol = build_lol_recurse(
+	paths=>\@paths,
+	current_url=>$url,
+	do_navbar=>0,
+	current_url_depth=>$current_url_depth,
+	curent_index_path=>$current_index_path,
+	current_index_path_depth=>$current_index_path_depth,
+    );
+
+Build a list of lists of paths, given a simple list of paths.
+This does the recursive part of build_lol.
+
+=cut
+sub build_lol_recurse {
+    my %args = (
+	paths=>undef,
+	depth=>0,
+	start_depth=>0,
+	end_depth=>0,
+	current_url=>'',
+	do_navbar=>0,
+	hide=>undef,
+	@_
+    );
+    my $paths_ref = $args{paths};
+    my $depth = $args{depth};
+    my $hide = $args{hide};
+    my $current_url_depth = $args{current_url_depth};
+    my $current_url_is_index = $args{current_url_is_index};
+    my $current_index_path = $args{current_index_path};
+    my $current_index_path_depth = $args{current_index_path_depth};
+    my $current_index_parent = $args{current_index_parent};
 
     my @list_of_lists = ();
     while (@{$paths_ref})
@@ -1150,6 +1219,8 @@ sub build_lol {
 	# a navbar shows the parent, the children
 	# and the current level
 	# and the top level
+	# and the siblings of one's parent if one is a contents-page
+	# or siblings of oneself if one is an index-page
 	elsif ($args{do_navbar}
 	    and $args{current_url}
 	    and !(
@@ -1165,6 +1236,16 @@ sub build_lol {
 	     or (
 		 $path_depth == $args{start_depth}
 		)
+	     or (
+		 !$current_url_is_index
+		 and $path_depth == $current_url_depth - 1
+		 and $path =~ /^$current_index_parent/
+		)
+	     or (
+		 $current_url_is_index
+		 and $path_depth == $current_url_depth
+		 and $path =~ /^$current_index_parent/
+		)
 	    )
 	   )
 	{
@@ -1177,7 +1258,8 @@ sub build_lol {
 	}
 	elsif ($path_depth > $depth)
 	{
-	    push @list_of_lists, [build_lol(
+	    push @list_of_lists, [build_lol_recurse(
+		%args,
 		paths=>$paths_ref,
 		depth=>$path_depth,
 		start_depth=>$args{start_depth},
@@ -1192,7 +1274,7 @@ sub build_lol {
 	}
     }
     return @list_of_lists;
-} # build_lol
+} # build_lol_recurse
 
 =head1 REQUIRES
 

@@ -1,6 +1,25 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.0502 Tue 17 January 2006
+--------------------------
+
+  * (17 Jan 2006) futher correction to navbar
+  	This time fer shure!
+
+0.0501 Tue 17 January 2006
+--------------------------
+
+  * (17 Jan 2006) corrected navbar error
+  	My feature enhancement... didn't do what I thought it did.  Oops.
+
+0.05 Tue 17 January 2006
+------------------------
+
+  * (17 Jan 2006) improved navbar
+  	Now the navbar shows the next level up when the current page
+  is not an index page; the siblings of its parent.
+
 0.04 Fri 13 January 2006
 ------------------------
 
