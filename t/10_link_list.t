@@ -51,8 +51,8 @@ is($link_html, $ok_str, "(2) default with current; values match");
 # para, no current
 $link_html = link_list(labels=>\%labels,
     urls=>\@links,
-    pre_list=>'<p>',
-    post_list=>'</p>',
+    links_head=>'<p>',
+    links_foot=>'</p>',
     pre_item=>'',
     post_item=>'',
     item_sep=>' :: ');

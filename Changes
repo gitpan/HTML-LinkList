@@ -1,6 +1,37 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.07 Thu 02 February 2006
+-------------------------
+
+  * (2 Feb 2006) depth fixes
+  	- enabled start_depth and end_depth to be changed for nav_tree
+  without wierdness happening.  It used to be that end_depth was ignored,
+  and if start_depth was anything other than 1, one would get too many links.
+
+  * (25 Jan 2006) empty lists
+  	Added a check to see that the generated list wasn't empty;
+  before this, it would *always* put on the list_head and list_foot
+  stuff even if there was nothing there.  Which meant that you
+  could end up with something like <ul></ul> which is Not Nice.
+
+  * (25 Jan 2006) parent_item_sep
+  	Added the 'parent_item_sep' parameter to 'nav_bar'.
+
+0.0601 Thu 19 January 2006
+--------------------------
+
+  * (19 Jan 2006) corrected error in changelog
+
+0.06 Thu 19 January 2006
+------------------------
+
+  * (19 Jan 2006) mostly nav_bar
+  	- added new function nav_bar, which does an across-the-top navbar
+  	- added new option 'nohide' to override 'hide'
+  	- renamed a number of options
+  	- restructured the way some things were done
+
 0.0502 Tue 17 January 2006
 --------------------------
 

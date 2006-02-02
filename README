@@ -6,7 +6,7 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 ==== VERSION ====
 
-This describes version ``0.0502'' of HTML::LinkList.
+This describes version ``0.07'' of HTML::LinkList.
 
 
 ==== DESCRIPTION ====
@@ -43,6 +43,10 @@ from it.
 The "nav_tree" function creates a set of nested links to be used as a
 multi-level navbar; one can give it a list of paths (as for full_tree) and
 it will only show the links related to the current URL.
+
+The "nav_bar" function creates a set of links designed to be used as an
+"across the top" navbar. One can give it a list of paths (as for full_tree)
+and it will only show the links related to the current URL.
 
 
 ==== REQUIRES ====
