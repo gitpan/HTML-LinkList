@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.07> of HTML::LinkList.
+This describes version B<0.08> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 =head1 SYNOPSIS
 
@@ -424,6 +424,7 @@ sub link_tree {
 	nohide=>$nohide_regex,
 	start_depth=>0,
 	end_depth=>0,
+	top_level=>0,
 	preserve_order=>0,
 	...
 	);
@@ -494,6 +495,11 @@ files/sub-folders in the root, and so on.
 
 End your tree at this depth.  If zero, then go all the way.
 
+=item top_level
+
+Decide which level is the "top" level.  Useful when you
+set the start_depth to something greater than 1.
+
 =item last_subtree_head
 
 The string to prepend to the last lower-level tree.
@@ -531,6 +537,7 @@ sub full_tree {
 		labels=>{},
 		start_depth=>0,
 		end_depth=>0,
+		top_level=>0,
 		@_
 	       );
 
@@ -634,6 +641,7 @@ sub breadcrumb_trail {
 		paths=>[],
 		start_depth=>0,
 		end_depth=>undef,
+		top_level=>0,
 		@_
 	       );
 
@@ -767,6 +775,7 @@ sub nav_tree {
 		labels=>{},
 		start_depth=>1,
 		end_depth=>undef,
+		top_level=>1,
 		@_
 	       );
 
@@ -923,6 +932,7 @@ sub nav_bar {
 		labels=>{},
 		start_depth=>1,
 		end_depth=>0,
+		top_level=>1,
 		@_
 	       );
 
@@ -1448,8 +1458,6 @@ sub build_lol {
 		%args,
 		paths=>$paths_ref,
 		depth=>$path_depth,
-		start_depth=>$args{start_depth},
-		end_depth=>$args{end_depth},
 		do_navbar=>$args{do_navbar},
 		current_url=>$args{current_url},
 		)];
@@ -1471,6 +1479,7 @@ sub build_lol {
 	nohide=>$nohide,
 	start_depth=>$start_depth,
 	end_depth=>$end_depth,
+	top_level=>$top_level,
 	do_navbar=>0,
     );
 
@@ -1483,6 +1492,7 @@ sub filter_out_paths {
 	paths=>undef,
 	start_depth=>0,
 	end_depth=>0,
+	top_level=>0,
 	current_url=>'',
 	do_navbar=>0,
 	hide=>'',
@@ -1526,7 +1536,7 @@ sub filter_out_paths {
 	}
 	# a navbar shows the parent, the children
 	# and the current level
-	# and the top level (if we are starting at level 1)
+	# and the top level (if we are starting at $top_level)
 	# and the siblings of one's parent if one is a contents-page
 	# or siblings of oneself if one is an index-page
 	elsif ($args{do_navbar}
@@ -1542,7 +1552,7 @@ sub filter_out_paths {
 		 and $path =~ /^$current_index_path/
 		)
 	     or (
-		 $args{start_depth} == 1
+		 $args{start_depth} == $args{top_level}
 		 and $path_depth == $args{start_depth}
 		)
 	     or (
@@ -1675,6 +1685,7 @@ sub build_levels {
 	depth=>0,
 	start_depth=>0,
 	end_depth=>0,
+	top_level=>0,
 	current_url=>'',
 	tree_parents=>[],
 	@_

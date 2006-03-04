@@ -1,6 +1,6 @@
 # testing nav_tree
 use strict;
-use Test::More tests => 12;
+use Test::More tests => 14;
 
 use HTML::LinkList qw(nav_tree);
 
@@ -235,6 +235,63 @@ $ok_str = '<ul><li><a href="/products/operations_control/">Operations Control</a
 <li><a href="/products/maintenance/">Maintenance</a></li>
 </ul>';
 is($link_html, $ok_str, "(5) start_depth=2; values match");
+
+# make an example html file of the difference
+if ($link_html ne $ok_str)
+{
+    make_test_html(link_html=>$link_html,
+	ok_str=>$ok_str,
+	test_count=>$test_count);
+}
+
+#
+# even more complicated links
+#
+@links = qw(
+/
+/dunes/about/about_cti.html
+/dunes/about/contact_us.html
+/dunes/about/people_technology.html
+/dunes/products/
+/dunes/products/operations_control/
+/dunes/products/operations_control/Airpac.html
+/dunes/products/operations_control/Airpac_Overview.pdf
+/dunes/products/crewing/
+/dunes/products/crewing/Crew_Rostering.pdf
+/dunes/products/maintenance/
+/dunes/solutions/
+/dunes/services/
+/dunes/news/press_release.html
+);
+
+%labels = (
+'/' => 'Home',
+'/index.html' => 'Home',
+'/dunes/' => 'Style Dunes',
+'/dunes/about/about_cti.html' => 'About CTI',
+'/dunes/about/people_technology.html' => 'People and Technology',
+);
+
+# starting at level 2 and discarding level 1
+$test_count++;
+$link_html = nav_tree(labels=>\%labels,
+    paths=>\@links,
+    start_depth=>2,
+    top_level=>2,
+    current_url=>'/dunes/products/');
+ok($link_html, "(5) start_depth=2, top_level=2; links HTML");
+
+$ok_str = '<ul><li><a href="/dunes/about/">About</a></li>
+<li><em>Products</em>
+<ul><li><a href="/dunes/products/operations_control/">Operations Control</a></li>
+<li><a href="/dunes/products/crewing/">Crewing</a></li>
+<li><a href="/dunes/products/maintenance/">Maintenance</a></li>
+</ul></li>
+<li><a href="/dunes/solutions/">Solutions</a></li>
+<li><a href="/dunes/services/">Services</a></li>
+<li><a href="/dunes/news/">News</a></li>
+</ul>';
+is($link_html, $ok_str, "(5) start_depth=2, top_level=2; values match");
 
 # make an example html file of the difference
 if ($link_html ne $ok_str)

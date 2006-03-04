@@ -1,6 +1,13 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.08 Thu 16 February 2006
+-------------------------
+
+  * (16 Feb 2006) top_level option
+  Added a new 'top_level' option, useful for starting a navigation
+  tree further down its hierarchy.
+
 0.07 Thu 02 February 2006
 -------------------------
 
