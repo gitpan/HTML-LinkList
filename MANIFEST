@@ -16,5 +16,4 @@ t/20_link_tree.t
 t/30_full_tree.t
 t/40_breadcrumb_trail.t
 t/50_nav_tree.t
-t/60_nav_bar.t
 

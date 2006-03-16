@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.08> of HTML::LinkList.
+This describes version B<0.09> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 =head1 SYNOPSIS
 
@@ -75,10 +75,6 @@ used as a multi-level navbar; one can give it a list of paths
 (as for full_tree) and it will only show the links related
 to the current URL.
 
-The "nav_bar" function creates a set of links designed to be used as an
-"across the top" navbar.  One can give it a list of paths (as for
-full_tree) and it will only show the links related to the current URL.
-
 =cut
 
 =head1 FUNCTIONS
@@ -109,7 +105,6 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	full_tree
 	breadcrumb_trail
 	nav_tree
-	nav_bar
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -146,6 +141,17 @@ the options can enable you to make it something other than a list
 altogether, or add in CSS styles or classes to make it look just
 like you want.
 
+Required:
+
+=over
+
+=item urls
+
+The urls in the order you want them displayed.  If this list
+is empty, then nothing will be generated.
+
+=back
+
 Options:
 
 =over
@@ -156,26 +162,21 @@ The link to the current page.  If one of the links equals this,
 then that is deemed to be the "active" link and is just displayed
 as a label rather than a link.
 
-=item prefix_url
+=item descriptions
 
-A prefix to prepend to all the links. (default: empty string)
+Optional hash of descriptions, to put next to the links.  The keys
+of this hash are the urls.
+
+=item item_sep
+
+String to put between items.
 
 =item labels
 
 A hash whose keys are links and whose values are labels.
 These are the labels for the links; if no label
 is given, then the last part of the link is used
-for the label.
-
-=item urls
-
-The urls in the order you want them displayed.  If this list
-is empty, then nothing will be generated.
-
-=item descriptions
-
-Optional hash of descriptions, to put next to the links.  The keys
-of this hash are the urls.
+for the label, with some formatting.
 
 =item links_head
 
@@ -202,9 +203,9 @@ The "active" item is the link which matches 'current_url'.
 
 An additional string to append to each active item, before post_item.
 
-=item item_sep
+=item prefix_url
 
-String to put between items.
+A prefix to prepend to all the links. (default: empty string)
 
 =back
 
@@ -235,7 +236,7 @@ sub link_list {
     }
     # correct the current_url
     $args{current_url} = make_canonical($args{current_url});
-    my %current_parents = extract_current_parents(current_url=>$args{current_url});
+    my %current_parents = extract_current_parents(%args);
     my @items = ();
     foreach my $link (@link_order)
     {
@@ -278,6 +279,17 @@ site maps.
 By default, this will return UL lists, but this is highly
 configurable.
 
+Required:
+
+=over
+
+=item link_tree
+
+A list of lists of urls, in the order you want them displayed.
+If a url is not in this list, it will not be displayed.
+
+=back
+
 Options:
 
 =over
@@ -288,26 +300,27 @@ The link to the current page.  If one of the links equals this,
 then that is deemed to be the "active" link and is just displayed
 as a label rather than a link.
 
-=item prefix_url
+=item descriptions
 
-A prefix to prepend to all the links. (default: empty string)
+Optional hash of descriptions, to put next to the links.  The keys
+of this hash are the urls.
+
+=item exclude_root_parent
+
+If this is true, then the "current_parent" display options are
+not used for the "root" ("/") path, it isn't counted as a "parent"
+of the current_url.
+
+=item item_sep
+
+The string to separate each item.
 
 =item labels
 
 A hash whose keys are links and whose values are labels.
 These are the labels for the links; if no label
 is given, then the last part of the link is used
-for the label.
-
-=item link_tree
-
-A list of lists of urls, in the order you want them displayed.
-If a url is not in this list, it will not be displayed.
-
-=item descriptions
-
-Optional hash of descriptions, to put next to the links.  The keys
-of this hash are the urls.
+for the label, with some formatting.
 
 =item links_head
 
@@ -317,16 +330,6 @@ The string to prepend the top-level tree with.
 =item links_foot
 
 The string to append to the top-level tree.
-(default: </ul>)
-
-=item subtree_head
-
-The string to prepend to lower-level trees.
-(default: <ul>)
-
-=item subtree_foot
-
-The string to append to lower-level trees.
 (default: </ul>)
 
 =item pre_item
@@ -360,9 +363,19 @@ of the 'current_url' link, after pre_item.
 An additional string to append to a link which is a parent
 of the 'current_url' link, before post_item.
 
-=item item_sep
+=item prefix_url
 
-The string to separate each item.
+A prefix to prepend to all the links. (default: empty string)
+
+=item subtree_head
+
+The string to prepend to lower-level trees.
+(default: <ul>)
+
+=item subtree_foot
+
+The string to append to lower-level trees.
+(default: </ul>)
 
 =item tree_sep
 
@@ -375,7 +388,6 @@ sub link_tree {
     my %args = (
 		current_url=>'',
 		prefix_url=>'',
-		links=>undef,
 		link_tree=>undef,
 		links_head=>'<ul>',
 		links_foot=>"\n</ul>",
@@ -396,7 +408,7 @@ sub link_tree {
 
     # correct the current_url
     $args{current_url} = make_canonical($args{current_url});
-    my %current_parents = extract_current_parents(current_url=>$args{current_url});
+    my %current_parents = extract_current_parents(%args);
 
     $args{tree_depth} = 0;
     $args{end_depth} = 0;
@@ -435,7 +447,7 @@ the nested structure for you, clustering parents and children together.
 
 The formatting options are as for L</link_tree>.
 
-Options:
+Required:
 
 =over
 
@@ -453,29 +465,68 @@ then the path is /foo.html
 This does not require that every possible path be given; all the intermediate
 paths will be figured out from the list.
 
-=item labels
+=back
 
-Hash containing replacement labels for one or more paths.
-If no label is given for '/' (the root path) then 'Home' will
-be used.
+Options:
+
+=over
+
+=item append_list
+
+Array of paths to append to the top-level links.  They are used
+as-is, and are not part of the processing done to the "paths" list
+of paths. (see L</prepend_list>)
 
 =item descriptions
 
 Optional hash of descriptions, to put next to the links.  The keys
 of this hash are the paths.
 
-=item prefix_url
+=item end_depth
 
-A prefix to prepend to all the links. (default: empty string)
+End your tree at this depth.  If zero, then go all the way.
+(see L</start_depth>)
+
+=item exclude_root_parent
+
+If this is true, then the "current_parent" display options are
+not used for the "root" ("/") path, it isn't counted as a "parent"
+of the current_url.
 
 =item hide
 
 If the path matches this string, don't include it in the tree.
 
+=item labels
+
+Hash containing replacement labels for one or more paths.
+If no label is given for '/' (the root path) then 'Home' will
+be used.
+
+=item last_subtree_head
+
+The string to prepend to the last lower-level tree.
+Only used if end_depth is not zero.
+
+=item last_subtree_foot
+
+The string to append to the last lower-level tree.
+Only used if end_depth is not zero.
+
 =item nohide
 
 If the path matches this string, it will be included even if it matches
 the 'hide' string.
+
+=item prefix_url
+
+A prefix to prepend to all the links. (default: empty string)
+
+=item prepend_list
+
+Array of paths to prepend to the top-level links.  They are used
+as-is, and are not part of the processing done to the "paths" list
+of paths.
 
 =item preserve_order
 
@@ -491,24 +542,10 @@ Start your tree at this depth.  Zero is the root, level 1 is the
 files/sub-folders in the root, and so on.
 (default: 0)
 
-=item end_depth
-
-End your tree at this depth.  If zero, then go all the way.
-
 =item top_level
 
 Decide which level is the "top" level.  Useful when you
 set the start_depth to something greater than 1.
-
-=item last_subtree_head
-
-The string to prepend to the last lower-level tree.
-Only used if end_depth is not zero.
-
-=item last_subtree_foot
-
-The string to append to the last lower-level tree.
-Only used if end_depth is not zero.
 
 =back
 
@@ -543,7 +580,7 @@ sub full_tree {
 
     # correct the current_url
     $args{current_url} = make_canonical($args{current_url});
-    my %current_parents = extract_current_parents(current_url=>$args{current_url});
+    my %current_parents = extract_current_parents(%args);
 
     # set the root label
     if (!$args{labels}->{'/'})
@@ -596,7 +633,7 @@ be set up to give a nested set of UL lists (as for L</full_tree>).
 
 The formatting options are as for L</link_tree>.
 
-Options:
+Required:
 
 =over
 
@@ -604,16 +641,28 @@ Options:
 
 The current url to be made into a breadcrumb-trail.
 
-=item labels
+=back
 
-Hash containing replacement labels for one or more URLS.
-If no label is given for '/' (the root path) then 'Home' will
-be used.
+Options:
+
+=over
 
 =item descriptions
 
 Optional hash of descriptions, to put next to the links.  The keys
 of this hash are the urls.
+
+=item exclude_root_parent
+
+If this is true, then the "current_parent" display options are
+not used for the "root" ("/") path, it isn't counted as a "parent"
+of the current_url.
+
+=item labels
+
+Hash containing replacement labels for one or more URLS.
+If no label is given for '/' (the root path) then 'Home' will
+be used.
 
 =back
 
@@ -697,9 +746,16 @@ Optionally one can hide links which match match the 'hide' option.
 
 The formatting options are as for L</link_tree>, with some additions.
 
-Options:
+Required:
 
 =over
+
+=item current_url
+
+The link to the current page.  If one of the links equals this, then that
+is deemed to be the "active" link and is just displayed as a label rather
+than a link.  This is also used to determine which links to show and which
+ones to filter out.
 
 =item paths
 
@@ -712,25 +768,66 @@ then the path is /foo.html
 This does not require that every possible path be given; all the intermediate
 paths will be figured out from the list.
 
-=item labels
+=back
 
-Hash containing replacement labels for one or more paths.
-If no label is given for '/' (the root path) then 'Home' will
-be used.
+Options:
+
+=over
+
+=item append_list
+
+Array of paths to append to the top-level links.  They are used
+as-is, and are not part of the processing done to the "paths" list
+of paths. (see L</prepend_list>)
 
 =item descriptions
 
 Optional hash of descriptions, to put next to the links.  The keys
 of this hash are the paths.
 
+=item end_depth
+
+End your tree at this depth.  If zero, then go all the way.
+By default this is set to the depth of the current_url.
+
+=item exclude_root_parent
+
+If this is true, then the "current_parent" display options are
+not used for the "root" ("/") path, it isn't counted as a "parent"
+of the current_url.
+
 =item hide
 
 If a path matches this string, don't include it in the tree.
+
+=item labels
+
+Hash containing replacement labels for one or more paths.
+If no label is given for '/' (the root path) then 'Home' will
+be used.
+
+=item last_subtree_head
+
+The string to prepend to the last lower-level tree.
+
+=item last_subtree_foot
+
+The string to append to the last lower-level tree.
 
 =item nohide
 
 If the path matches this string, it will be included even if it matches
 the 'hide' string.
+
+=item prefix_url
+
+A prefix to prepend to all the links. (default: empty string)
+
+=item prepend_list
+
+Array of paths to prepend to the top-level links.  They are used
+as-is, and are not part of the processing done to the "paths" list
+of paths.
 
 =item preserve_order
 
@@ -738,15 +835,16 @@ Preserve the ordering of the paths in the input list of paths;
 otherwise the links will be sorted alphabetically.
 (default: true)
 
-=item last_subtree_head
+=item start_depth
 
-The string to prepend to the last lower-level tree.
-Only used if end_depth is not zero.
+Start your tree at this depth.  Zero is the root, level 1 is the
+files/sub-folders in the root, and so on.
+(default: 1)
 
-=item last_subtree_foot
+=item top_level
 
-The string to append to the last lower-level tree.
-Only used if end_depth is not zero.
+Decide which level is the "top" level.  Useful when you
+set the start_depth to something greater than 1.
 
 =back
 
@@ -772,6 +870,7 @@ sub nav_tree {
 		hide=>'',
 		nohide=>'',
 		preserve_order=>1,
+		include_home=>0,
 		labels=>{},
 		start_depth=>1,
 		end_depth=>undef,
@@ -782,7 +881,7 @@ sub nav_tree {
     # correct the current_url
     $args{current_url} = make_canonical($args{current_url});
     my $current_is_index = ($args{current_url} =~ m#/$#);
-    my %current_parents = extract_current_parents(current_url=>$args{current_url});
+    my %current_parents = extract_current_parents(%args);
 
     # set the end depth if isn't already set
     # if this is an index-page, then make the depth its depth + 1
@@ -819,154 +918,6 @@ sub nav_tree {
 	return '';
     }
 } # nav_tree
-
-=head2 nav_bar
-
-    $links = nav_bar(
-	paths=>\@list_of_paths,
-	labels=>\%labels,
-	current_url=>$url,
-	hide=>$hide_regex,
-	nohide=>$nohide_regex,
-	preserve_order=>1,
-	descriptions=>\%desc,
-	...
-	);
-
-This takes a list of links, and the current URL, and makes a multi-level
-navigation bar related to the current_url, where links at the same "level"
-in the hierarchy are grouped together, and then links on the next level,
-and so on.  It's intended for an across-the-top navbar; if you have a very
-deep hierarchy it may be better to use L</nav_tree>.
-
-Optionally one can hide links which match match the 'hide' option.
-
-The formatting options are as for L</link_tree>, with some additions.
-
-Options:
-
-=over
-
-=item paths
-
-A reference to a list of paths: that is, URLs relative to the top
-of the site.
-
-For example, if the full URL is http://www.example.com/foo.html
-then the path is /foo.html
-
-This does not require that every possible path be given; all the intermediate
-paths will be figured out from the list.
-
-=item labels
-
-Hash containing replacement labels for one or more paths.
-If no label is given for '/' (the root path) then 'Home' will
-be used.
-
-=item descriptions
-
-Optional hash of descriptions, to put next to the links.  The keys
-of this hash are the paths.
-
-=item hide
-
-If a path matches this string, don't include it in the tree.
-
-=item nohide
-
-If the path matches this string, it will be included even if it matches
-the 'hide' string.
-
-=item preserve_order
-
-Preserve the ordering of the paths in the input list of paths;
-otherwise the links will be sorted alphabetically.
-(default: true)
-
-=item pre_level
-
-String to put in front of a level group.
-
-=item post_level
-
-String to append to a level group.
-
-=item level_sep
-
-String to separate the levels.
-
-=item pre_level_parent
-
-String to put in front of the link which is the parent of this level.
-
-=item post_level_parent
-
-String to append to the link which is the parent of this level.
-
-=back
-
-=cut
-sub nav_bar {
-    my %args = (
-		paths=>undef,
-		current_url=>'',
-		links_head=>'<ul>',
-		links_foot=>"\n</ul>",
-		pre_level=>'<li>',
-		post_level=>'</li>',
-		pre_item=>'',
-		post_item=>'',
-		pre_active_item=>'<em>',
-		post_active_item=>'</em>',
-		pre_current_parent=>'<strong>',
-		post_current_parent=>'</strong>',
-		pre_level_parent=>'[',
-		post_level_parent=>']',
-		item_sep=>" :\n",
-		parent_item_sep=>" :\n",
-		level_sep=>"\n",
-		hide=>'',
-		nohide=>'',
-		preserve_order=>1,
-		labels=>{},
-		start_depth=>1,
-		end_depth=>0,
-		top_level=>1,
-		@_
-	       );
-
-    # correct the current_url
-    $args{current_url} = make_canonical($args{current_url});
-    my $current_is_index = ($args{current_url} =~ m#/$#);
-
-    my %current_parents = extract_current_parents(current_url=>$args{current_url});
-
-    # set the end depth
-    # if this is an index-page, then make the depth its depth + 1
-    # if this is a content-page, make the depth its depth
-    my $current_url_depth = path_depth($args{current_url});
-    $args{end_depth} = ($current_is_index
-	? $current_url_depth + 1 : $current_url_depth);
-
-    # set the root label
-    if (!$args{labels}->{'/'})
-    {
-	$args{labels}->{'/'} = 'Home';
-    }
-    my @path_list = extract_all_paths(paths=>$args{paths},
-	preserve_order=>$args{preserve_order});
-    @path_list = filter_out_paths(%args, paths=>\@path_list, do_navbar=>1);
-    my @list_of_lists = build_levels(%args, paths=>\@path_list,
-				  do_navbar=>1,
-				  depth=>$args{start_depth});
-
-    $args{tree_depth} = 0;
-    my $list = traverse_levels(\@list_of_lists,
-			       %args,
-			       current_parents=>\%current_parents);
-    return join('', $args{links_head}, $list, $args{links_foot});
-} # nav_bar
 
 =head1 Private Functions
 
@@ -1371,7 +1322,8 @@ sub extract_all_paths {
 
 =head2 extract_current_parents
 
-my %current_parents = extract_current_parents(current_url=>$url);
+    my %current_parents = extract_current_parents(current_url=>$url,
+					      exclude_root_parent=>0);
 
 Extract the "parent" paths of the current url
 
@@ -1383,10 +1335,14 @@ then that would make
 /foo/
 /foo/bar/
 
+If 'exclude_root_parent' is true, then the '/' is excluded from the
+list of parents.
+
 =cut
 sub extract_current_parents {
     my %args = (
 	current_url=>undef,
+	exclude_root_parent=>0,
 	@_
     );
     
@@ -1398,10 +1354,12 @@ sub extract_current_parents {
     {
 	# these paths are index-pages. should end in '/'
 	my $newpath = join('/', @path_split, '');
-	# give this path the same order-num as the full path
-	# but only if it hasn't already been added
 	$paths{$newpath} = 1;
 	pop @path_split;
+    }
+    if ($args{exclude_root_parent})
+    {
+	delete $paths{"/"};
     }
 
     return %paths;
@@ -1435,6 +1393,8 @@ sub build_lol {
 	end_depth=>0,
 	current_url=>'',
 	do_navbar=>0,
+	prepend_list=>undef,
+	append_list=>undef,
 	@_
     );
     my $paths_ref = $args{paths};
@@ -1456,6 +1416,8 @@ sub build_lol {
 	{
 	    push @list_of_lists, [build_lol(
 		%args,
+		prepend_list=>undef,
+		append_list=>undef,
 		paths=>$paths_ref,
 		depth=>$path_depth,
 		do_navbar=>$args{do_navbar},
@@ -1465,6 +1427,36 @@ sub build_lol {
 	elsif ($path_depth < $depth)
 	{
 	    return @list_of_lists;
+	}
+    }
+    # prepend the given list to the top level
+    if (defined $args{prepend_list} and @{$args{prepend_list}})
+    {
+	# if the list of lists is a single item which is a list
+	# then add the extra list to that item
+	if ($#list_of_lists == 0
+	    and ref($list_of_lists[0]) eq "ARRAY")
+	{
+	    unshift @{$list_of_lists[0]}, @{$args{prepend_list}};
+	}
+	else
+	{
+	    unshift @list_of_lists, @{$args{prepend_list}};
+	}
+    }
+    # append the given list to the top level
+    if (defined $args{append_list} and @{$args{append_list}})
+    {
+	# if the list of lists is a single item which is a list
+	# then add the extra list to that item
+	if ($#list_of_lists == 0
+	    and ref($list_of_lists[0]) eq "ARRAY")
+	{
+	    push @{$list_of_lists[0]}, @{$args{append_list}};
+	}
+	else
+	{
+	    push @list_of_lists, @{$args{append_list}};
 	}
     }
     return @list_of_lists;
@@ -1578,212 +1570,6 @@ sub filter_out_paths {
     }
     return @wantedpaths;
 } # filter_out_paths
-
-=head2 traverse_levels
-
-$links = traverse_levels(\@list_of_lists,
-    labels=>\%labels,
-    ...
-    );
-
-Expects a list, where each item is a reference to a list of links;
-or a list of links plus one list of a list of links -- the latter
-is an indicator of the parent(s) of this level.
-
-Creates a list-grid of items.
-
-=cut
-sub traverse_levels {
-    my $lol_ref = shift;
-    my %args = (
-		current_url=>'',
-		labels=>undef,
-		prefix_url=>'',
-		pre_level=>'<li>',
-		post_level=>'</li>',
-		pre_item=>'',
-		post_item=>'',
-		pre_active_item=>'<em>',
-		post_active_item=>'</em>',
-		pre_level_parent=>'[',
-		post_level_parent=>']',
-		item_sep=>" ::\n",
-		parent_item_sep=>" ::\n",
-		level_sep=>"\n",
-		@_
-	       );
-
-    my @levels = ();
-    foreach my $ll (@{$lol_ref})
-    {
-	if (ref $ll)
-	{
-	    my @items = ();
-	    foreach my $link (@{$ll})
-	    {
-		my $label = '';
-		my $item = '';
-		if (ref $link) # this is a level-parent list
-		{
-		    my @lp_items = ();
-		    foreach my $lp (@{$link})
-		    {
-			$label = (exists $args{labels}->{$link}
-				     ? $args{labels}->{$link} : '');
-			my $lp_item = make_item(%args,
-					  this_link=>$lp,
-					  this_label=>$label,
-					  no_link=>1,
-					 );
-			push @lp_items, $lp_item;
-			$item = join($args{parent_item_sep}, @lp_items);
-			$item = join('', $args{pre_level_parent},
-				     $item, $args{post_level_parent});
-		    }
-		    push @items, $item;
-		}
-		else
-		{
-		    $label = (exists $args{labels}->{$link}
-				 ? $args{labels}->{$link} : '');
-		    $item = make_item(%args,
-					 this_link=>$link,
-					 this_label=>$label,
-					);
-		    push @items, $item;
-		}
-	    }
-	    my $level = join($args{item_sep}, @items);
-	    $level = join('', $args{pre_level}, $level, $args{post_level});
-	    push @levels, $level;
-	}
-	else
-	{
-	    warn "traverse_levels: '$ll' is not a list";
-	}
-    }
-    my $group = join($args{level_sep}, @levels);
-    return $group;
-} # traverse_levels
-
-=head2 build_levels
-
-    my @lol = build_levels(
-	paths=>\@paths,
-	current_url=>$url,
-    );
-
-Build a "grid" of paths, given a simple list of paths.
-The first item contains a list of items at 'start_depth',
-then the following items contain lists of items at lower depth,
-with optional filtering if we are doing a navbar.
-
-=cut
-sub build_levels {
-    my %args = (
-	paths=>undef,
-	depth=>0,
-	start_depth=>0,
-	end_depth=>0,
-	top_level=>0,
-	current_url=>'',
-	tree_parents=>[],
-	@_
-    );
-    my $paths_ref = $args{paths};
-    my $depth = $args{depth};
-
-    my @list_of_lists = ();
-
-    # if we have no paths, we're done
-    if (!@{$paths_ref})
-    {
-	return @list_of_lists;
-    }
-
-    # first make the top-level list
-    my @top_level = ();
-    my @lower_levels = ();
-    my @higher_levels = ();
-    foreach my $path (@{$paths_ref})
-    {
-	my $can_path = make_canonical($path);
-	my $path_depth = path_depth($can_path);
-	if ($path_depth == $depth)
-	{
-	    push @top_level, $path;
-	}
-	elsif ($path_depth > $depth)
-	{
-	    push @lower_levels, $path;
-	}
-	elsif ($path_depth < $depth)
-	{
-	    push @higher_levels, $path;
-	}
-    }
-    # pass the higher-level paths back, let our caller worry about them
-    @{$paths_ref} = @higher_levels;
-
-    # if we've run out of paths, we've finished
-    if (!@top_level)
-    {
-	return @list_of_lists;
-    }
-
-    # if there is a parent url, prepend the top-level list with it
-    if (@{$args{tree_parents}})
-    {
-	unshift @top_level, $args{tree_parents};
-    }
-
-    # add the top-level list to the list-of-lists
-    push @list_of_lists, \@top_level;
-
-    # if we've run out of paths, we've finished
-    if (!@lower_levels)
-    {
-	return @list_of_lists;
-    }
-
-    # go through the top-level list
-    # checking for lower-level paths that match
-    foreach my $top_path (@top_level)
-    {
-	my $top_can_path = make_canonical($top_path);
-	my @tree_parents = @{$args{tree_parents}};
-	push @tree_parents, $top_path;
-	my @below_this_path = ();
-	my @other_paths = ();
-	# get the paths below this path
-	foreach my $path (@lower_levels)
-	{
-	    my $can_path = make_canonical($path);
-	    if ($can_path =~ /^$top_can_path/)
-	    {
-		push @below_this_path, $path;
-	    }
-	    else
-	    {
-		push @other_paths, $path;
-	    }
-	}
-	# now recursively process the paths below this path
-	my @following_items = build_levels(%args,
-	    depth=>$depth + 1,
-	    paths=>\@below_this_path,
-	    tree_parents=>\@tree_parents);
-	if (@following_items)
-	{
-	    push @list_of_lists, @following_items;
-	}
-	
-	# put the other paths there for the next iteration
-	@lower_levels = @other_paths;
-    }
-
-    return @list_of_lists;
-} # build_levels
 
 =head1 REQUIRES
 

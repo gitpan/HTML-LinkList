@@ -1,6 +1,6 @@
 # testing nav_tree
 use strict;
-use Test::More tests => 14;
+use Test::More tests => 18;
 
 use HTML::LinkList qw(nav_tree);
 
@@ -65,7 +65,7 @@ $test_count++;
 $link_html = nav_tree(labels=>\%labels,
     paths=>\@links,
     current_url=>'/foo/wibble.html');
-ok($link_html, "(1) default; links HTML");
+ok($link_html, "($test_count) default; links HTML");
 
 my $ok_str = '';
 $ok_str = '<ul><li><a href="/foo/">Foo</a>
@@ -78,7 +78,7 @@ $ok_str = '<ul><li><a href="/foo/">Foo</a>
 <li><a href="/tray/">Tray</a></li>
 </ul>';
 
-is($link_html, $ok_str, "(1) default; values match");
+is($link_html, $ok_str, "($test_count) default; values match");
 # make an example html file of the difference
 if ($link_html ne $ok_str)
 {
@@ -92,7 +92,7 @@ $test_count++;
 $link_html = nav_tree(labels=>\%labels,
     paths=>\@links,
     current_url=>'/foo/');
-ok($link_html, "(2) current-is-dir; links HTML");
+ok($link_html, "($test_count) current-is-dir; links HTML");
 
 $ok_str = '<ul><li><em>Foo</em>
 <ul><li><a href="/foo/bar/">Bar</a></li>
@@ -103,7 +103,7 @@ $ok_str = '<ul><li><em>Foo</em>
 <li><a href="/bringle/">Bringle</a></li>
 <li><a href="/tray/">Tray</a></li>
 </ul>';
-is($link_html, $ok_str, "(2) current-is_dir; values match");
+is($link_html, $ok_str, "($test_count) current-is_dir; values match");
 # make an example html file of the difference
 if ($link_html ne $ok_str)
 {
@@ -117,7 +117,7 @@ $test_count++;
 $link_html = nav_tree(labels=>\%labels,
     paths=>\@links,
     current_url=>'/foo/bar/baz.html');
-ok($link_html, "(3) lower level; links HTML");
+ok($link_html, "($test_count) lower level; links HTML");
 
 $ok_str = '<ul><li><a href="/foo/">Foo</a>
 <ul><li><a href="/foo/bar/">Bar</a>
@@ -131,7 +131,7 @@ $ok_str = '<ul><li><a href="/foo/">Foo</a>
 <li><a href="/bringle/">Bringle</a></li>
 <li><a href="/tray/">Tray</a></li>
 </ul>';
-is($link_html, $ok_str, "(3) lower level; values match");
+is($link_html, $ok_str, "($test_count) lower level; values match");
 # make an example html file of the difference
 if ($link_html ne $ok_str)
 {
@@ -145,7 +145,7 @@ $test_count++;
 $link_html = nav_tree(labels=>\%labels,
     paths=>\@links,
     current_url=>'/foo/bar/');
-ok($link_html, "(4) mid level; links HTML");
+ok($link_html, "($test_count) mid level; links HTML");
 
 $ok_str = '<ul><li><a href="/foo/">Foo</a>
 <ul><li><em>Bar</em>
@@ -159,7 +159,7 @@ $ok_str = '<ul><li><a href="/foo/">Foo</a>
 <li><a href="/bringle/">Bringle</a></li>
 <li><a href="/tray/">Tray</a></li>
 </ul>';
-is($link_html, $ok_str, "(4) mid level; values match");
+is($link_html, $ok_str, "($test_count) mid level; values match");
 
 # make an example html file of the difference
 if ($link_html ne $ok_str)
@@ -200,7 +200,7 @@ $test_count++;
 $link_html = nav_tree(labels=>\%labels,
     paths=>\@links,
     current_url=>'/products/');
-ok($link_html, "(5) more links; links HTML");
+ok($link_html, "($test_count) more links; links HTML");
 
 $ok_str = '<ul><li><a href="/about/">About</a></li>
 <li><em>Products</em>
@@ -212,7 +212,7 @@ $ok_str = '<ul><li><a href="/about/">About</a></li>
 <li><a href="/services/">Services</a></li>
 <li><a href="/news/">News</a></li>
 </ul>';
-is($link_html, $ok_str, "(5) more links; values match");
+is($link_html, $ok_str, "($test_count) more links; values match");
 
 # make an example html file of the difference
 if ($link_html ne $ok_str)
@@ -228,13 +228,77 @@ $link_html = nav_tree(labels=>\%labels,
     paths=>\@links,
     start_depth=>2,
     current_url=>'/products/');
-ok($link_html, "(5) start_depth=2; links HTML");
+ok($link_html, "($test_count) start_depth=2; links HTML");
 
 $ok_str = '<ul><li><a href="/products/operations_control/">Operations Control</a></li>
 <li><a href="/products/crewing/">Crewing</a></li>
 <li><a href="/products/maintenance/">Maintenance</a></li>
 </ul>';
-is($link_html, $ok_str, "(5) start_depth=2; values match");
+is($link_html, $ok_str, "($test_count) start_depth=2; values match");
+
+# make an example html file of the difference
+if ($link_html ne $ok_str)
+{
+    make_test_html(link_html=>$link_html,
+	ok_str=>$ok_str,
+	test_count=>$test_count);
+}
+
+# Including the Home in the top navbar
+#
+$test_count++;
+$link_html = nav_tree(labels=>\%labels,
+    paths=>\@links,
+    prepend_list=>[qw(/)],
+    current_url=>'/products/');
+ok($link_html, "($test_count) more links; include Home; links HTML");
+
+$ok_str = '<ul><li><a href="/">Home</a></li>
+<li><a href="/about/">About</a></li>
+<li><em>Products</em>
+<ul><li><a href="/products/operations_control/">Operations Control</a></li>
+<li><a href="/products/crewing/">Crewing</a></li>
+<li><a href="/products/maintenance/">Maintenance</a></li>
+</ul></li>
+<li><a href="/solutions/">Solutions</a></li>
+<li><a href="/services/">Services</a></li>
+<li><a href="/news/">News</a></li>
+</ul>';
+is($link_html, $ok_str, "($test_count) more links; include Home; values match");
+
+# make an example html file of the difference
+if ($link_html ne $ok_str)
+{
+    make_test_html(link_html=>$link_html,
+	ok_str=>$ok_str,
+	test_count=>$test_count);
+}
+
+# current_parent stuff
+$test_count++;
+$link_html = nav_tree(labels=>\%labels,
+    paths=>\@links,
+    prepend_list=>[qw(/)],
+    exclude_root_parent=>1,
+    pre_current_parent=>'<strong>',
+    post_current_parent=>'</strong>',
+    current_url=>'/products/crewing/');
+ok($link_html, "($test_count) more links; include Home; links HTML");
+
+$ok_str = '<ul><li><a href="/">Home</a></li>
+<li><a href="/about/">About</a></li>
+<li><strong><a href="/products/">Products</a></strong>
+<ul><li><a href="/products/operations_control/">Operations Control</a></li>
+<li><em>Crewing</em>
+<ul><li><a href="/products/crewing/Crew_Rostering.pdf">Crew Rostering</a></li>
+</ul></li>
+<li><a href="/products/maintenance/">Maintenance</a></li>
+</ul></li>
+<li><a href="/solutions/">Solutions</a></li>
+<li><a href="/services/">Services</a></li>
+<li><a href="/news/">News</a></li>
+</ul>';
+is($link_html, $ok_str, "($test_count) more links; include Home; values match");
 
 # make an example html file of the difference
 if ($link_html ne $ok_str)
@@ -279,7 +343,7 @@ $link_html = nav_tree(labels=>\%labels,
     start_depth=>2,
     top_level=>2,
     current_url=>'/dunes/products/');
-ok($link_html, "(5) start_depth=2, top_level=2; links HTML");
+ok($link_html, "($test_count) start_depth=2, top_level=2; links HTML");
 
 $ok_str = '<ul><li><a href="/dunes/about/">About</a></li>
 <li><em>Products</em>
@@ -291,7 +355,7 @@ $ok_str = '<ul><li><a href="/dunes/about/">About</a></li>
 <li><a href="/dunes/services/">Services</a></li>
 <li><a href="/dunes/news/">News</a></li>
 </ul>';
-is($link_html, $ok_str, "(5) start_depth=2, top_level=2; values match");
+is($link_html, $ok_str, "($test_count) start_depth=2, top_level=2; values match");
 
 # make an example html file of the difference
 if ($link_html ne $ok_str)

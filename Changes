@@ -1,6 +1,29 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.09 Thu 16 March 2006
+----------------------
+
+  * (16 Mar 2006) documentation tweaking
+
+  * (16 Mar 2006) exclude_root_parent
+  	Added the 'exclude_root_parent' option, which excludes the root "/"
+  path from being counted as a "parent" to the current_url when using the
+  'pre_current_parent' and 'post_current_parent' options.
+  	This can be useful if you want to use those options but don't
+  want the root/Home link to be displayed differently.
+
+  * (16 Mar 2006) prepend_list and append_list
+  	Added new options (to 'full_tree', 'nav_tree') 'prepend_list'
+  and 'append_list' which enable you to prepend or append a list of links
+  to be added to your "top level" as-is.
+
+  * (16 Mar 2006) removed nav_bar
+  	Removed the 'nav_bar' function because it was horrible and made
+  yucky navbars.  With use of CSS and choice of levels and separators, the
+  'nav_tree' should be sufficient, since while the UL list is the default,
+  it can be set up to use paragraphs and so on.
+
 0.08 Thu 16 February 2006
 -------------------------
 
