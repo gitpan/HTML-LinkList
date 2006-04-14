@@ -1,6 +1,6 @@
 # testing nav_tree
 use strict;
-use Test::More tests => 18;
+use Test::More tests => 22;
 
 use HTML::LinkList qw(nav_tree);
 
@@ -104,6 +104,52 @@ $ok_str = '<ul><li><em>Foo</em>
 <li><a href="/tray/">Tray</a></li>
 </ul>';
 is($link_html, $ok_str, "($test_count) current-is_dir; values match");
+# make an example html file of the difference
+if ($link_html ne $ok_str)
+{
+    make_test_html(link_html=>$link_html,
+	ok_str=>$ok_str,
+	test_count=>$test_count);
+}
+
+# current is dir with 'breadcrumb' style
+$test_count++;
+$link_html = nav_tree(labels=>\%labels,
+    navbar_type=>'breadcrumb',
+    paths=>\@links,
+    current_url=>'/foo/');
+ok($link_html, "($test_count) dir breadcrumb-navbar; links HTML");
+
+$ok_str = '<ul><li><em>Foo</em>
+<ul><li><a href="/foo/bar/">Bar</a></li>
+<li><a href="/foo/wibble.html">Wibble</a></li>
+<li><a href="/foo/boo/">Boo</a></li>
+</ul></li>
+</ul>';
+is($link_html, $ok_str, "($test_count) dir breadcrumb-navbar; values match");
+# make an example html file of the difference
+if ($link_html ne $ok_str)
+{
+    make_test_html(link_html=>$link_html,
+	ok_str=>$ok_str,
+	test_count=>$test_count);
+}
+
+# current is not dir with 'breadcrumb' style
+$test_count++;
+$link_html = nav_tree(labels=>\%labels,
+    navbar_type=>'breadcrumb',
+    paths=>\@links,
+    current_url=>'/foo/wibble.html');
+ok($link_html, "($test_count) non-dir breadcrumb-navbar; links HTML");
+
+$ok_str = '<ul><li><a href="/foo/">Foo</a>
+<ul><li><a href="/foo/bar/">Bar</a></li>
+<li><em>Wibble</em></li>
+<li><a href="/foo/boo/">Boo</a></li>
+</ul></li>
+</ul>';
+is($link_html, $ok_str, "($test_count) non-dir breadcrumb-navbar; values match");
 # make an example html file of the difference
 if ($link_html ne $ok_str)
 {

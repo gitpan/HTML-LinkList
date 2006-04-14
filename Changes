@@ -1,6 +1,22 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.1001 Thu 13 April 2006
+------------------------
+
+  * (12 Apr 2006) fixed nohide bug
+  	The 'nohide' option was being ignored in some circumstances.
+
+0.10 Sat 01 April 2006
+----------------------
+
+  * (1 Apr 2006) breadcrumb-navbar
+  	Added a hybrid breadcrumb-navbar: nav_tree(navbar_type=>'breadcrumb')
+  which starts off like a breadcrumb-trail, showing the parent(s) of
+  the current URL, but also showing the current level, not just the current
+  URL.  Useful in situations where you don't want a full-blown navigation
+  tree.
+
 0.09 Thu 16 March 2006
 ----------------------
 

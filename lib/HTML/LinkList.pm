@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.09> of HTML::LinkList.
+This describes version B<0.1001> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.09';
+our $VERSION = '0.1001';
 
 =head1 SYNOPSIS
 
@@ -875,6 +875,7 @@ sub nav_tree {
 		start_depth=>1,
 		end_depth=>undef,
 		top_level=>1,
+		navbar_type=>'normal',
 		@_
 	       );
 
@@ -899,10 +900,8 @@ sub nav_tree {
     my @path_list = extract_all_paths(paths=>$args{paths},
 	preserve_order=>$args{preserve_order});
     @path_list = filter_out_paths(%args,
-				  paths=>\@path_list,
-				  do_navbar=>1);
+				  paths=>\@path_list);
     my @list_of_lists = build_lol(%args, paths=>\@path_list,
-				  do_navbar=>1,
 				  depth=>0);
     $args{tree_depth} = 0;
 
@@ -1370,7 +1369,7 @@ sub extract_current_parents {
     my @lol = build_lol(
 	paths=>\@paths,
 	current_url=>$url,
-	do_navbar=>0,
+	navbar_type=>'',
     );
 
 Build a list of lists of paths, given a simple list of paths.
@@ -1392,7 +1391,7 @@ sub build_lol {
 	start_depth=>0,
 	end_depth=>0,
 	current_url=>'',
-	do_navbar=>0,
+	navbar_type=>'',
 	prepend_list=>undef,
 	append_list=>undef,
 	@_
@@ -1420,7 +1419,7 @@ sub build_lol {
 		append_list=>undef,
 		paths=>$paths_ref,
 		depth=>$path_depth,
-		do_navbar=>$args{do_navbar},
+		navbar_type=>$args{navbar_type},
 		current_url=>$args{current_url},
 		)];
 	}
@@ -1472,7 +1471,7 @@ sub build_lol {
 	start_depth=>$start_depth,
 	end_depth=>$end_depth,
 	top_level=>$top_level,
-	do_navbar=>0,
+	navbar_type=>'',
     );
 
 Filter out the paths we don't want from our list of paths.
@@ -1486,7 +1485,7 @@ sub filter_out_paths {
 	end_depth=>0,
 	top_level=>0,
 	current_url=>'',
-	do_navbar=>0,
+	navbar_type=>'',
 	hide=>'',
 	nohide=>'',
 	@_
@@ -1508,12 +1507,12 @@ sub filter_out_paths {
 	my $path_depth = path_depth($can_path);
 	my $path_is_index = ($can_path =~ m#/$#);
 	if ($hide and $nohide
-	    and $path =~ /$hide/
-	    and $path != /$nohide/)
+	    and not($path =~ /$nohide/)
+	    and $path =~ /$hide/)
 	{
 	    # skip this one
 	}
-	elsif ($hide and $path =~ /$hide/)
+	elsif ($hide and !$nohide and $path =~ /$hide/)
 	{
 	    # skip this one
 	}
@@ -1526,12 +1525,38 @@ sub filter_out_paths {
 	{
 	    # skip this one
 	}
+	# a breadcrumb-navbar shows the parent, self,
+	# and the children of dirs or siblings of non-dirs
+	elsif ($args{navbar_type} eq 'breadcrumb'
+	    and $args{current_url}
+	    and !(
+	     ($path_depth <= $current_url_depth
+	      and $args{current_url} =~ /^$path/)
+	     or (
+		 $path eq $args{current_url}
+		)
+	     or (
+		 $current_url_is_index
+		 and $path_depth >= $current_url_depth
+		 and $path =~ /^$current_index_path\//
+		)
+	     or (
+		 !$current_url_is_index
+		 and $path_depth >= $current_url_depth
+		 and $path =~ /^$current_index_parent\//
+		)
+	    )
+	   )
+	{
+	    # skip this one
+	}
 	# a navbar shows the parent, the children
 	# and the current level
 	# and the top level (if we are starting at $top_level)
 	# and the siblings of one's parent if one is a contents-page
 	# or siblings of oneself if one is an index-page
-	elsif ($args{do_navbar}
+	elsif (($args{navbar_type}
+	    or $args{do_navbar}) # backwards compatibility
 	    and $args{current_url}
 	    and !(
 	     ($path_depth <= $current_url_depth
