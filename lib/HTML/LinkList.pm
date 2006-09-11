@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.1001> of HTML::LinkList.
+This describes version B<0.13> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.1001';
+our $VERSION = '0.13';
 
 =head1 SYNOPSIS
 
@@ -124,6 +124,8 @@ our @EXPORT = qw(
 	urls=>\@links_in_order,
 	labels=>\%labels,
 	descriptions=>\%desc,
+	pre_desc=>' ',
+	post_desc=>'',
 	links_head=>'<ul>',
 	links_foot=>'</ul>',
 	pre_item=>'<li>',
@@ -167,6 +169,12 @@ as a label rather than a link.
 Optional hash of descriptions, to put next to the links.  The keys
 of this hash are the urls.
 
+=item hide_ext
+
+If a site is hiding link extensions (such as using MultiViews with
+Apache) you may wish to hide the extensions (while using the full URLs
+to check various things). (default: 0 (false))
+
 =item item_sep
 
 String to put between items.
@@ -185,6 +193,14 @@ String to begin the list with.
 =item links_foot
 
 String to end the list with.
+
+=item pre_desc
+
+String to prepend to each description.
+
+=item post_desc
+
+String to append to each description.
 
 =item pre_item
 
@@ -225,6 +241,7 @@ sub link_list {
 		pre_current_parent=>'',
 		post_current_parent=>'',
 		item_sep=>"\n",
+		hide_ext=>0,
 		@_
 	       );
 
@@ -261,6 +278,8 @@ sub link_list {
 	link_tree=>\@list_of_lists,
 	labels=>\%labels,
 	descriptions=>\%desc,
+	pre_desc=>' ',
+	post_desc=>'',
 	links_head=>'<ul>',
 	links_foot=>'</ul>',
 	subtree_head=>'<ul>',
@@ -311,6 +330,12 @@ If this is true, then the "current_parent" display options are
 not used for the "root" ("/") path, it isn't counted as a "parent"
 of the current_url.
 
+=item hide_ext
+
+If a site is hiding link extensions (such as using MultiViews with
+Apache) you may wish to hide the extensions (while using the full URLs
+to check various things). (default: 0 (false))
+
 =item item_sep
 
 The string to separate each item.
@@ -331,6 +356,14 @@ The string to prepend the top-level tree with.
 
 The string to append to the top-level tree.
 (default: </ul>)
+
+=item pre_desc
+
+String to prepend to each description.
+
+=item post_desc
+
+String to append to each description.
 
 =item pre_item
 
@@ -438,6 +471,7 @@ sub link_tree {
 	end_depth=>0,
 	top_level=>0,
 	preserve_order=>0,
+	preserve_paths=>0,
 	...
 	);
 
@@ -497,6 +531,12 @@ of the current_url.
 
 If the path matches this string, don't include it in the tree.
 
+=item hide_ext
+
+If a site is hiding link extensions (such as using MultiViews with
+Apache) you may wish to hide the extensions (while using the full URLs
+to check various things). (default: 0 (false))
+
 =item labels
 
 Hash containing replacement labels for one or more paths.
@@ -536,6 +576,13 @@ preserve_order is true, the structure is at the whims of the order
 of the original list of paths, and so could end up odd-looking.
 (default: false)
 
+=item preserve_paths
+
+Do not extract intermediate paths or reorder the input list of paths.
+This speeds things up, but assumes that the input paths are complete
+and in good order.
+(default: false)
+
 =item start_depth
 
 Start your tree at this depth.  Zero is the root, level 1 is the
@@ -571,6 +618,7 @@ sub full_tree {
 		hide=>'',
 		nohide=>'',
 		preserve_order=>0,
+		preserve_paths=>0,
 		labels=>{},
 		start_depth=>0,
 		end_depth=>0,
@@ -587,9 +635,17 @@ sub full_tree {
     {
 	$args{labels}->{'/'} = 'Home';
     }
-    my @path_list = extract_all_paths(paths=>$args{paths},
-	preserve_order=>$args{preserve_order});
-    @path_list = filter_out_paths(%args, paths=>\@path_list);
+    my @path_list = ();
+    if ($args{preserve_paths})
+    {
+	@path_list = filter_out_paths(%args, paths=>$args{paths});
+    }
+    else
+    {
+	@path_list = extract_all_paths(paths=>$args{paths},
+				       preserve_order=>$args{preserve_order});
+	@path_list = filter_out_paths(%args, paths=>\@path_list);
+    }
     my @list_of_lists = build_lol(%args, paths=>\@path_list,
 				  depth=>0);
     $args{tree_depth} = 0;
@@ -657,6 +713,12 @@ of this hash are the urls.
 If this is true, then the "current_parent" display options are
 not used for the "root" ("/") path, it isn't counted as a "parent"
 of the current_url.
+
+=item hide_ext
+
+If a site is hiding link extensions (such as using MultiViews with
+Apache) you may wish to hide the extensions (while using the full URLs
+to check various things). (default: 0 (false))
 
 =item labels
 
@@ -800,6 +862,12 @@ of the current_url.
 
 If a path matches this string, don't include it in the tree.
 
+=item hide_ext
+
+If a site is hiding link extensions (such as using MultiViews with
+Apache) you may wish to hide the extensions (while using the full URLs
+to check various things). (default: 0 (false))
+
 =item labels
 
 Hash containing replacement labels for one or more paths.
@@ -834,6 +902,13 @@ of paths.
 Preserve the ordering of the paths in the input list of paths;
 otherwise the links will be sorted alphabetically.
 (default: true)
+
+=item preserve_paths
+
+Do not extract intermediate paths or reorder the input list of paths.
+This speeds things up, but assumes that the input paths are complete
+and in good order.
+(default: false)
 
 =item start_depth
 
@@ -870,6 +945,7 @@ sub nav_tree {
 		hide=>'',
 		nohide=>'',
 		preserve_order=>1,
+		preserve_paths=>0,
 		include_home=>0,
 		labels=>{},
 		start_depth=>1,
@@ -897,10 +973,17 @@ sub nav_tree {
     {
 	$args{labels}->{'/'} = 'Home';
     }
-    my @path_list = extract_all_paths(paths=>$args{paths},
-	preserve_order=>$args{preserve_order});
-    @path_list = filter_out_paths(%args,
-				  paths=>\@path_list);
+    my @path_list = ();
+    if ($args{preserve_paths})
+    {
+	@path_list = filter_out_paths(%args, paths=>$args{paths});
+    }
+    else
+    {
+	@path_list = extract_all_paths(paths=>$args{paths},
+				       preserve_order=>$args{preserve_order});
+	@path_list = filter_out_paths(%args, paths=>\@path_list);
+    }
     my @list_of_lists = build_lol(%args, paths=>\@path_list,
 				  depth=>0);
     $args{tree_depth} = 0;
@@ -927,9 +1010,12 @@ These functions cannot be exported.
 $item = make_item(
 	this_label=>$label,
 	this_link=>$link,
+	hide_ext=>0,
 	current_url=>$url,
 	current_parents=>\%current_parents,
 	descriptions=>\%desc,
+	pre_desc=>' ',
+	post_desc=>'',
 	pre_item=>'<li>',
 	post_item=>'</li>'
 	pre_active_item=>'<em>',
@@ -987,6 +1073,7 @@ sub make_item {
     my %args = (
 		this_link=>'',
 		this_label=>'',
+		hide_ext=>0,
 		current_url=>'',
 		current_parents=>{},
 		prefix_url=>'',
@@ -996,6 +1083,8 @@ sub make_item {
 		post_active_item=>'</em>',
 		pre_current_parent=>'<em>',
 		post_current_parent=>'</em>',
+		pre_desc=>' ',
+		post_desc=>'',
 		defer_post_item=>0,
 		no_link=>0,
 		@_
@@ -1025,13 +1114,26 @@ sub make_item {
 	$label =~ s#_# #g;
 	$label =~ s/(\w+)/\u\L$1/g;
     }
+    # if we are hiding the extensions of files
+    # we need to display an extensionless link
+    # while doing checks with the original link
+    my $display_link = $link;
+    if ($args{hide_ext})
+    {
+	if ($link =~ /(.*)\.\w+$/) # file
+	{
+	    $display_link = $1;
+	}
+    }
     my $item = '';
     my $desc = '';
     if (exists $args{descriptions}->{$link}
 	and defined $args{descriptions}->{$link}
 	and $args{descriptions}->{$link})
     {
-	$desc = ' ' . $args{descriptions}->{$link};
+	$desc = join('', $args{pre_desc},
+		     $args{descriptions}->{$link},
+		     $args{post_desc});
     }
     if (link_is_active(this_link=>$link,
 	current_url=>$args{current_url}))
@@ -1039,8 +1141,9 @@ sub make_item {
 	$item = join('', $args{pre_item},
 		     $args{pre_active_item},
 		     $label,
+		     $args{post_active_item},
 		     $desc,
-		     $args{post_active_item});
+		     );
     }
     elsif ($args{no_link})
     {
@@ -1054,7 +1157,7 @@ sub make_item {
     {
 	$item = join('', $args{pre_item},
 		     $args{pre_current_parent},
-		     '<a href="', $prefix_url, $link, '">',
+		     '<a href="', $prefix_url, $display_link, '">',
 		     $label, '</a>',
 		     $args{post_current_parent},
 		     $desc);
@@ -1062,7 +1165,7 @@ sub make_item {
     else
     {
 	$item = join('', $args{pre_item},
-		     '<a href="', $prefix_url, $link, '">',
+		     '<a href="', $prefix_url, $display_link, '">',
 		     $label, '</a>',
 		     $desc);
     }
@@ -1216,6 +1319,7 @@ sub traverse_lol {
 		pre_current_parent=>'<em>',
 		post_current_parent=>'</em>',
 		item_sep=>"\n",
+		hide_ext=>0,
 		@_
 	       );
 
@@ -1566,7 +1670,7 @@ sub filter_out_paths {
 		)
 	     or (
 		 $path_depth >= $current_url_depth 
-		 and $path =~ /^$current_index_path/
+		 and $path =~ /^$current_index_path\//
 		)
 	     or (
 		 $args{start_depth} == $args{top_level}
@@ -1575,12 +1679,12 @@ sub filter_out_paths {
 	     or (
 		 !$current_url_is_index
 		 and $path_depth == $current_url_depth - 1
-		 and $path =~ /^$current_index_parent/
+		 and $path =~ /^$current_index_parent\//
 		)
 	     or (
 		 $current_url_is_index
 		 and $path_depth == $current_url_depth
-		 and $path =~ /^$current_index_parent/
+		 and $path =~ /^$current_index_parent\//
 		)
 	    )
 	   )

@@ -1,14 +1,19 @@
 ---
 name: HTML-LinkList
-version: 0.1001
+version: 0.13
 author:
   - Kathryn Andersen
 abstract: Create a 'smart' list of HTML links.
 license: perl
+resources:
+  license: http://dev.perl.org/licenses/
 build_requires:
   Test::More: 0
 provides:
   HTML::LinkList:
     file: lib/HTML/LinkList.pm
-    version: 0.1001
-generated_by: Module::Build version 0.2611
+    version: 0.13
+generated_by: Module::Build version 0.28
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2

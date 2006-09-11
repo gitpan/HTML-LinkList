@@ -1,6 +1,37 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.13 Mon 11 September 2006
+--------------------------
+
+  * (11 Sep 2006) hide_ext
+  	Added the 'hide_ext' option, to hide extensions of files in
+  links (useful for MultiViews sites).
+
+0.12 Tue 23 May 2006
+--------------------
+
+  * (23 May 2006) description improvements
+  	Added 'pre_desc' and 'post_desc' options to enable one to
+  put a string before and after the descriptions.
+
+0.11 Thu 20 April 2006
+----------------------
+
+  * (20 Apr 2006) preserve_paths option
+  	Added the 'preserve_paths' option; if this is true, then the
+  input paths are not sorted, nor do they have intermediate paths extracted.
+  This speeds things up slightly, and can be useful if you already have a full
+  list of paths and don't need to do that processing on it again.
+
+0.1002 Mon 17 April 2006
+------------------------
+
+  * (17 Apr 2006) navbar fix
+  	If there are paths that are too similar, such as one subdir
+  in a directory being called "foo", and another called "foobar", then
+  it would pick up the foobar stuff in foo when it shouldn't.
+
 0.1001 Thu 13 April 2006
 ------------------------
 
