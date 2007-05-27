@@ -6,7 +6,7 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 ==== VERSION ====
 
-This describes version ``0.13'' of HTML::LinkList.
+This describes version ``0.1501'' of HTML::LinkList.
 
 
 ==== DESCRIPTION ====
@@ -26,7 +26,8 @@ whatever system you want.
 
 The default format for the HTML is to make an unordered list, but there are
 many options, enabling one to have a flatter layout with any separators you
-desire.
+desire, or a more complicated list with differing formats for different
+levels.
 
 The "link_list" function uses a simple list of links -- good for a simple
 navbar.

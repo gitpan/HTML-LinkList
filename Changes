@@ -1,6 +1,26 @@
 Revision history for HTML-LinkList
 ==================================
 
+0.1501 Sat 26 May 2007
+----------------------
+
+  * (26 May 2007) fix formats
+  	Fixed a bug in the advanced formats stuff.
+
+0.15 Tue 22 May 2007
+--------------------
+
+  * (22 May 2007) advanced formats
+  	Added "formats" option for advanced formatting.
+
+0.14 Sat 19 May 2007
+--------------------
+
+  * (19 May 2007) uneven lists
+  	Enable this to deal with lists of lists where the first item
+  isn't a normal item, but a sub-list, but the next item is a normal
+  item.
+
 0.13 Mon 11 September 2006
 --------------------------
 

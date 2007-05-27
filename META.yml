@@ -1,6 +1,6 @@
 ---
 name: HTML-LinkList
-version: 0.13
+version: 0.1501
 author:
   - Kathryn Andersen
 abstract: Create a 'smart' list of HTML links.
@@ -12,8 +12,8 @@ build_requires:
 provides:
   HTML::LinkList:
     file: lib/HTML/LinkList.pm
-    version: 0.13
-generated_by: Module::Build version 0.28
+    version: 0.1501
+generated_by: Module::Build version 0.2805
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html
   version: 1.2

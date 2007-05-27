@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.13> of HTML::LinkList.
+This describes version B<0.1501> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.13';
+our $VERSION = '0.1501';
 
 =head1 SYNOPSIS
 
@@ -37,6 +37,14 @@ our $VERSION = '0.13';
 	post_active_item=>'</em>',
 	item_sep=>" :: ");
 
+    # multi-level list
+    my $html_links = link_tree(
+	current_url=>$url,
+	link_tree=>\@list_of_lists,
+	labels=>\%labels,
+	descriptions=>\%desc);
+
+
 =head1 DESCRIPTION
 
 This module contains a number of functions for taking sets of URLs and
@@ -54,7 +62,8 @@ plugged into whatever system you want.
 
 The default format for the HTML is to make an unordered list, but there
 are many options, enabling one to have a flatter layout with any
-separators you desire.
+separators you desire, or a more complicated list with differing
+formats for different levels.
 
 The "link_list" function uses a simple list of links -- good for a
 simple navbar.
@@ -89,6 +98,7 @@ To export all functions do:
 
 =cut
 
+use Data::Dumper;
 require Exporter;
 
 our @ISA = qw(Exporter);
@@ -251,6 +261,19 @@ sub link_list {
     {
 	return '';
     }
+    my %format = (exists $args{format}
+	? %{$args{format}}
+	: (
+	    pre_item=>$args{pre_item},
+	    post_item=>$args{post_item},
+	    pre_active_item=>$args{pre_active_item},
+	    post_active_item=>$args{post_active_item},
+	    pre_current_parent=>$args{pre_current_parent},
+	    post_current_parent=>$args{post_current_parent},
+	    pre_desc=>$args{pre_desc},
+	    post_desc=>$args{post_desc},
+	    item_sep=>$args{item_sep},
+	));
     # correct the current_url
     $args{current_url} = make_canonical($args{current_url});
     my %current_parents = extract_current_parents(%args);
@@ -260,12 +283,13 @@ sub link_list {
 	my $label = (exists $args{labels}->{$link}
 	    ? $args{labels}->{$link} : '');
 	my $item = make_item(%args,
+	    format=>\%format,
 	    current_parents=>\%current_parents,
 	    this_link=>$link,
 	    this_label=>$label);
 	push @items, $item;
     }
-    my $list = join($args{item_sep}, @items);
+    my $list = join($format{item_sep}, @items);
     return ($list
 	? join('', $args{links_head}, $list, $args{links_foot})
 	: '');
@@ -289,7 +313,8 @@ sub link_list {
 	pre_active_item=>'<em>',
 	post_active_item=>'</em>',
 	item_sep=>"\n",
-	tree_sep=>"\n");
+	tree_sep=>"\n",
+	formats=>\%formats);
 
 Generates nested lists of links from a list of lists of links.
 This is useful for things such as table-of-contents or
@@ -329,6 +354,43 @@ of this hash are the urls.
 If this is true, then the "current_parent" display options are
 not used for the "root" ("/") path, it isn't counted as a "parent"
 of the current_url.
+
+=item formats
+
+A reference to a hash containing advanced format settings. For example:
+
+    my %formats = (
+	       # level 1 and onwards
+	       '1' => {
+	       tree_head=>"<ol>",
+	       tree_foot=>"</ol>\n",
+	       },
+	       # level 2 and onwards
+	       '2' => {
+	       tree_head=>"<ul>",
+	       tree_foot=>"</ul>\n",
+	       },
+	       # level 3 and onwards
+	       '3' => {
+	       pre_item=>'(',
+	       post_item=>')',
+	       item_sep=>",\n",
+	       tree_sep=>' -> ',
+	       tree_head=>"<br/>\n",
+	       tree_foot=>"",
+	       }
+	      );
+
+The formats hash enables you to control the formatting on a per-level basis.
+Each key of the hash corresponds to a level-number; the sub-hashes contain
+format arguments which will apply from that level onwards.  If an argument
+isn't given in the sub-hash, then it will fall back to the previous level
+(or to the default, if there is no setting for that format-argument
+for a previous level).
+
+The only difference between the names of the arguments in the sub-hash and
+in the global format arguments is that instead of 'subtree_head' and subtree_foot'
+it uses 'tree_head' and 'tree_foot'.
 
 =item hide_ext
 
@@ -449,12 +511,15 @@ sub link_tree {
     if (defined $args{link_tree}
 	and @{$args{link_tree}})
     {
+	my %default_format = make_default_format(%args);
+	my %formats = make_extra_formats(%args);
 	my @link_tree = @{$args{link_tree}};
 	my $list = traverse_lol(\@link_tree,
 				%args,
+				formats=>\%formats,
+				current_format=>\%default_format,
 				current_parents=>\%current_parents);
-	return join('', $args{links_head}, $list, $args{links_foot})
-	    if $list;
+	return $list if $list;
     }
     return '';
 } # link_tree
@@ -651,17 +716,16 @@ sub full_tree {
     $args{tree_depth} = 0;
     $args{end_depth} = 0;
 
+    my %default_format = make_default_format(%args);
+    my %formats = make_extra_formats(%args);
     my $list = traverse_lol(\@list_of_lists,
 			    %args,
+			    formats=>\%formats,
+			    current_format=>\%default_format,
 			    current_parents=>\%current_parents);
-    if ($list)
-    {
-	return join('', $args{links_head}, $list, $args{links_foot});
-    }
-    else
-    {
-	return '';
-    }
+    return $list if $list;
+
+    return '';
 } # full_tree
 
 =head2 breadcrumb_trail
@@ -774,15 +838,16 @@ sub breadcrumb_trail {
     $args{tree_depth} = 0;
     $args{end_depth} = 0;
 
-    my $list = traverse_lol(\@list_of_lists, %args);
-    if ($list)
-    {
-	return join('', $args{links_head}, $list, $args{links_foot});
-    }
-    else
-    {
-	return '';
-    }
+    my %default_format = make_default_format(%args);
+    my %formats = make_extra_formats(%args);
+    my $list = traverse_lol(\@list_of_lists,
+			    %args,
+			    formats=>\%formats,
+			    current_format=>\%default_format,
+			    );
+    return $list if $list;
+
+    return '';
 } # breadcrumb_trail
 
 =head2 nav_tree
@@ -988,17 +1053,16 @@ sub nav_tree {
 				  depth=>0);
     $args{tree_depth} = 0;
 
+    my %default_format = make_default_format(%args);
+    my %formats = make_extra_formats(%args);
     my $list = traverse_lol(\@list_of_lists,
 			    %args,
+			    formats=>\%formats,
+			    current_format=>\%default_format,
 			    current_parents=>\%current_parents);
-    if ($list)
-    {
-	return join('', $args{links_head}, $list, $args{links_foot});
-    }
-    else
-    {
-	return '';
-    }
+    return $list if $list;
+
+    return '';
 } # nav_tree
 
 =head1 Private Functions
@@ -1014,6 +1078,10 @@ $item = make_item(
 	current_url=>$url,
 	current_parents=>\%current_parents,
 	descriptions=>\%desc,
+	format=>\%format,
+    );
+
+%format = (
 	pre_desc=>' ',
 	post_desc=>'',
 	pre_item=>'<li>',
@@ -1023,7 +1091,7 @@ $item = make_item(
 	pre_current_parent=>'<em>',
 	post_current_parent=>'</em>',
 	item_sep=>"\n");
-    );
+);
 
 Format a link item.
 
@@ -1077,14 +1145,6 @@ sub make_item {
 		current_url=>'',
 		current_parents=>{},
 		prefix_url=>'',
-		pre_item=>'<li>',
-		post_item=>'</li>',
-		pre_active_item=>'<em>',
-		post_active_item=>'</em>',
-		pre_current_parent=>'<em>',
-		post_current_parent=>'</em>',
-		pre_desc=>' ',
-		post_desc=>'',
 		defer_post_item=>0,
 		no_link=>0,
 		@_
@@ -1092,6 +1152,7 @@ sub make_item {
     my $link = $args{this_link};
     my $prefix_url = $args{prefix_url};
     my $label = $args{this_label};
+    my %format = %{$args{format}};
 
     if (!$label)
     {
@@ -1131,23 +1192,23 @@ sub make_item {
 	and defined $args{descriptions}->{$link}
 	and $args{descriptions}->{$link})
     {
-	$desc = join('', $args{pre_desc},
+	$desc = join('', $format{pre_desc},
 		     $args{descriptions}->{$link},
-		     $args{post_desc});
+		     $format{post_desc});
     }
     if (link_is_active(this_link=>$link,
 	current_url=>$args{current_url}))
     {
-	$item = join('', $args{pre_item},
-		     $args{pre_active_item},
+	$item = join('', $format{pre_item},
+		     $format{pre_active_item},
 		     $label,
-		     $args{post_active_item},
+		     $format{post_active_item},
 		     $desc,
 		     );
     }
     elsif ($args{no_link})
     {
-	$item = join('', $args{pre_item},
+	$item = join('', $format{pre_item},
 		     $label,
 		     $desc);
     }
@@ -1155,23 +1216,23 @@ sub make_item {
 	and exists $args{current_parents}->{$link}
 	and $args{current_parents}->{$link})
     {
-	$item = join('', $args{pre_item},
-		     $args{pre_current_parent},
+	$item = join('', $format{pre_item},
+		     $format{pre_current_parent},
 		     '<a href="', $prefix_url, $display_link, '">',
 		     $label, '</a>',
-		     $args{post_current_parent},
+		     $format{post_current_parent},
 		     $desc);
     }
     else
     {
-	$item = join('', $args{pre_item},
+	$item = join('', $format{pre_item},
 		     '<a href="', $prefix_url, $display_link, '">',
 		     $label, '</a>',
 		     $desc);
     }
     if (!$args{defer_post_item})
     {
-	$item = join('', $item, $args{post_item});
+	$item = join('', $item, $format{post_item});
     }
     return $item;
 } # make_item
@@ -1297,6 +1358,7 @@ sub link_is_active {
 $links = traverse_lol(\@list_of_lists,
     labels=>\%labels,
     tree_depth=>$depth
+    current_format=>\%format,
     ...
     );
 
@@ -1312,18 +1374,17 @@ sub traverse_lol {
 		current_url=>'',
 		labels=>undef,
 		prefix_url=>'',
-		pre_item=>'<li>',
-		post_item=>'</li>',
-		pre_active_item=>'<em>',
-		post_active_item=>'</em>',
-		pre_current_parent=>'<em>',
-		post_current_parent=>'</em>',
-		item_sep=>"\n",
 		hide_ext=>0,
 		@_
 	       );
 
     my $tree_depth = $args{tree_depth};
+    my %format = (
+	%{$args{current_format}},
+	(exists $args{formats}->{$tree_depth}
+	? %{$args{formats}->{$tree_depth}}
+	: ())
+	);
     my @items = ();
     while (@{$lol_ref})
     {
@@ -1336,36 +1397,48 @@ sub traverse_lol {
 	    my $item = make_item(this_link=>$link,
 				 this_label=>$label,
 				 defer_post_item=>1,
-				 %args);
+				 %args,
+				 format=>\%format);
 
 	    if (ref $lol_ref->[0]) # next one is a list
 	    {
-		my $ll = shift @{$lol_ref};
-		$args{tree_depth}++; # no longer the first call
-		my $sublist = traverse_lol($ll, %args);
-		$item = join($args{tree_sep}, $item, $sublist);
+		$ll = shift @{$lol_ref};
+		my $sublist = traverse_lol($ll, %args,
+		    tree_depth=>$tree_depth + 1,
+		    current_format=>\%format);
+		$item = join($format{tree_sep}, $item, $sublist);
 	    }
-	    $item = join('', $item, $args{post_item});
+	    $item = join('', $item, $format{post_item});
 	    push @items, $item;
 	}
 	else # a reference to a list
 	{
-	    return traverse_lol($ll, %args);
+	    if (defined $args{start_depth}
+		&& $args{tree_depth} < $args{start_depth})
+	    {
+		return traverse_lol($ll, %args, current_format=>\%format);
+	    }
+	    else
+	    {
+		my $sublist = traverse_lol($ll, %args,
+		    tree_depth=>$tree_depth + 1,
+		    current_format=>\%format);
+		my $item = join($format{tree_sep}, $format{pre_item}, $sublist);
+		$item = join('', $item, $format{post_item});
+		push @items, $item;
+	    }
 	}
     }
-    my $list = join($args{item_sep}, @items);
+    my $list = join($format{item_sep}, @items);
     return join('',
-	($tree_depth > 0
-	    ? (($args{end_depth} && $tree_depth == $args{end_depth} )
+	    (($args{end_depth} && $tree_depth == $args{end_depth} )
 	    ? $args{last_subtree_head}
-	    : $args{subtree_head})
-	    : ''),
+	    : $format{tree_head}),
 	$list,
-	($tree_depth > 0
-	    ? (($args{end_depth} && $tree_depth == $args{end_depth} )
+	    (($args{end_depth} && $tree_depth == $args{end_depth} )
 	    ? $args{last_subtree_foot}
-	    : $args{subtree_foot})
-	    : ''));
+	    : $format{tree_foot})
+	    );
 } # traverse_lol
 
 =head2 extract_all_paths
@@ -1699,6 +1772,95 @@ sub filter_out_paths {
     }
     return @wantedpaths;
 } # filter_out_paths
+
+=head2 make_default_format
+
+    my %default_format = make_default_format(%args);
+
+Make the default format hash from the args.
+Returns a hash of format options.
+
+=cut
+sub make_default_format {
+    my %args = (
+		links_head=>'<ul>',
+		links_foot=>"\n</ul>",
+		subtree_head=>'<ul>',
+		subtree_foot=>"\n</ul>",
+		last_subtree_head=>'<ul>',
+		last_subtree_foot=>"\n</ul>",
+		pre_item=>'<li>',
+		post_item=>'</li>',
+		pre_active_item=>'<em>',
+		post_active_item=>'</em>',
+		pre_current_parent=>'',
+		post_current_parent=>'',
+		item_sep=>"\n",
+		tree_sep=>"\n",
+		@_
+	       );
+    my %default_format = (
+			  pre_item=>$args{pre_item},
+			  post_item=>$args{post_item},
+			  pre_active_item=>$args{pre_active_item},
+			  post_active_item=>$args{post_active_item},
+			  pre_current_parent=>$args{pre_current_parent},
+			  post_current_parent=>$args{post_current_parent},
+			  pre_desc=>$args{pre_desc},
+			  post_desc=>$args{post_desc},
+			  item_sep=>$args{item_sep},
+			  tree_sep=>$args{tree_sep},
+			  tree_head=>$args{links_head},
+			  tree_foot=>$args{links_foot},
+			 );
+    return %default_format;
+} # make_default_format
+
+=head2 make_extra_formats
+
+    my %formats = make_extra_formats(%args);
+
+Transforms the subtree_head and subtree_foot into the "formats"
+method of formatting.
+Returns a hash of hashes of format options.
+
+=cut
+sub make_extra_formats {
+    my %args = (
+		formats=>undef,
+		links_head=>'<ul>',
+		links_foot=>"\n</ul>",
+		subtree_head=>'<ul>',
+		subtree_foot=>"\n</ul>",
+		last_subtree_head=>'<ul>',
+		last_subtree_foot=>"\n</ul>",
+		pre_item=>'<li>',
+		post_item=>'</li>',
+		pre_active_item=>'<em>',
+		post_active_item=>'</em>',
+		pre_current_parent=>'',
+		post_current_parent=>'',
+		item_sep=>"\n",
+		tree_sep=>"\n",
+		@_
+	       );
+    my %formats = ();
+    if (defined $args{formats})
+    {
+	%formats = %{$args{formats}};
+    }
+    if ($args{links_head} ne $args{subtree_head}
+	|| $args{links_foot} ne $args{subtree_foot})
+    {
+	if (!exists $formats{1})
+	{
+	    $formats{1} = {};
+	}
+	$formats{1}->{tree_head} = $args{subtree_head};
+	$formats{1}->{tree_foot} = $args{subtree_foot};
+    }
+    return %formats;
+} # make_extra_formats
 
 =head1 REQUIRES
 

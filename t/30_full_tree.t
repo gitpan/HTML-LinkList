@@ -1,6 +1,6 @@
 # testing full_tree
 use strict;
-use Test::More tests => 8;
+use Test::More tests => 10;
 
 use HTML::LinkList qw(full_tree);
 
@@ -105,4 +105,46 @@ $ok_str = '<ul><li><a href="/">Home</a>
 </ul>';
 
 is($link_html, $ok_str, "(4) preserve_order; values match");
+
+# differing formats, no current
+my %formats = (
+ '1' => {
+ tree_head=>"<ol>",
+ tree_foot=>"</ol>\n",
+ },
+ '2' => {
+ pre_item=>'(',
+ post_item=>')',
+ item_sep=>",\n",
+ tree_sep=>' -> ',
+ tree_head=>"<br/>\n",
+ tree_foot=>"",
+ },
+ '3' => {
+ pre_item=>' {{ ',
+ post_item=>' }} ',
+ item_sep=>" ::\n",
+ },
+ );
+$link_html = full_tree(labels=>\%labels,
+    paths=>\@links,
+    formats=>\%formats,
+    preserve_order=>1);
+ok($link_html, "(5) formats; links HTML");
+
+$ok_str = '<ul><li><a href="/">Home</a>
+<ol><li><a href="/foo/">Foo</a>
+<br/>
+(<a href="/foo/bar/">Bar</a> -> <br/>
+ {{ <a href="/foo/bar/baz.html">Bazzy</a> }} )</li>
+<li><a href="/fooish.html">Fooish</a></li>
+<li><a href="/bringle/">Bringle</a></li>
+<li><a href="/tray/">Tray</a>
+<br/>
+(<a href="/tray/nav.html">Navigation</a>),
+(<a href="/tray/tea_tray.html">Tea Tray</a>)</li></ol>
+</li>
+</ul>';
+
+is($link_html, $ok_str, "(5) formats; values match");
 
