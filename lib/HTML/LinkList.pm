@@ -8,11 +8,11 @@ HTML::LinkList - Create a 'smart' list of HTML links.
 
 =head1 VERSION
 
-This describes version B<0.1501> of HTML::LinkList.
+This describes version B<0.1503> of HTML::LinkList.
 
 =cut
 
-our $VERSION = '0.1501';
+our $VERSION = '0.1503';
 
 =head1 SYNOPSIS
 
@@ -1103,7 +1103,7 @@ See L</link_list> for the formatting options.
 
 The label of the required link.  If there is no label,
 this uses the base-name of the last part of the link,
-capitalizing it and replacing underscores with spaces.
+capitalizing it and replacing underscores and dashes with spaces.
 
 =item this_link
 
@@ -1157,11 +1157,11 @@ sub make_item {
     if (!$label)
     {
 	$label = $link if !$label;
-	if ($link =~ /(\w+)\.\w+$/) # file
+	if ($link =~ /([-\w]+)\.\w+$/) # file
 	{
 	    $label = $1;
 	}
-	elsif ($link =~ /(\w+)\/?$/) # dir
+	elsif ($link =~ /([-\w]+)\/?$/) # dir
 	{
 	    $label = $1;
 	}
@@ -1173,7 +1173,8 @@ sub make_item {
 	
 	# prettify
 	$label =~ s#_# #g;
-	$label =~ s/(\w+)/\u\L$1/g;
+	$label =~ s#-# #g;
+	$label =~ s/([-\w]+)/\u\L$1/g;
     }
     # if we are hiding the extensions of files
     # we need to display an extensionless link
@@ -1181,7 +1182,7 @@ sub make_item {
     my $display_link = $link;
     if ($args{hide_ext})
     {
-	if ($link =~ /(.*)\.\w+$/) # file
+	if ($link =~ /(.*)\.[-\w]+$/) # file
 	{
 	    $display_link = $1;
 	}
@@ -1257,7 +1258,7 @@ sub make_canonical {
     {
 	$url = $1;
     }
-    elsif ($url =~ m#/\w+$#) # no dots; a directory
+    elsif ($url =~ m#/[-\w]+$#) # no dots; a directory
     {
 	$url .= '/'; # add the slash
     }
@@ -1279,7 +1280,7 @@ sub get_index_path {
 
     return $url if (!$url);
     $url = make_canonical($url);
-    if ($url =~ m#^(.*)/\w+\.\w+$#)
+    if ($url =~ m#^(.*)/[-\w]+\.\w+$#)
     {
 	$url = $1;
     }
@@ -1303,7 +1304,7 @@ sub get_index_parent {
 
     return $url if (!$url);
     $url = get_index_path($url);
-    if ($url =~ m#^(.*)/\w+$#)
+    if ($url =~ m#^(.*)/[-\w]+$#)
     {
 	$url = $1;
     }
@@ -1523,19 +1524,22 @@ sub extract_current_parents {
     );
     
     my %paths = ();
-    my $current_url = $args{current_url};
-    my @path_split = split('/', $current_url);
-    pop @path_split; # remove the current url
-    while (@path_split)
+    if ($args{current_url})
     {
-	# these paths are index-pages. should end in '/'
-	my $newpath = join('/', @path_split, '');
-	$paths{$newpath} = 1;
-	pop @path_split;
-    }
-    if ($args{exclude_root_parent})
-    {
-	delete $paths{"/"};
+	my $current_url = $args{current_url};
+	my @path_split = split('/', $current_url);
+	pop @path_split; # remove the current url
+	    while (@path_split)
+	    {
+		# these paths are index-pages. should end in '/'
+		my $newpath = join('/', @path_split, '');
+		$paths{$newpath} = 1;
+		pop @path_split;
+	    }
+	if ($args{exclude_root_parent})
+	{
+	    delete $paths{"/"};
+	}
     }
 
     return %paths;

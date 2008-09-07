@@ -14,12 +14,8 @@ my $builder = Module::Build->new(
     build_requires => {
         'Test::More' => 0,
     },
-    add_to_cleanup      => [ 'HTML-LinkList-*' ],
-
+    create_makefile_pl => 'traditional',
+#    add_to_cleanup      => [ 'HTML-LinkList-*' ],
 );
 
 $builder->create_build_script();
-# create the Makefile.PL
-use Module::Build::Compat;
-print "creating Makefile.PL\n";
-Module::Build::Compat->create_makefile_pl('passthrough', $builder);
